@@ -2395,6 +2395,7 @@ let currentSellersPage = 1;
 let currentBuyersPage = 1;
 let currentInvoicesPage = 1;
 
+
 // Generic pagination function
 function paginate(data, page, perPage) {
   if (perPage === 'all') return { data, totalPages: 1, currentPage: 1 };
@@ -2466,15 +2467,14 @@ async function populateProductsTable() {
   const perPage = document.getElementById('productsPerPage')?.value || '20';
   
   // Apply filters
-  products = searchProducts(products, searchTerm);
-  products = filterProducts(products, typeFilter, statusFilter);
+  const filteredProducts = filterProducts(searchProducts(products, searchTerm), typeFilter, statusFilter);
   
   // Apply pagination
-  const paginatedData = paginate(products, currentProductsPage, perPage);
+  const paginatedData = paginate(filteredProducts, currentProductsPage, perPage);
   
   tbody.innerHTML = '';
   
-  if (!products || products.length === 0) {
+  if (!filteredProducts || filteredProducts.length === 0) {
     const row = document.createElement('tr');
     row.innerHTML = `
       <td colspan="10" style="text-align: center;">
@@ -2777,14 +2777,14 @@ async function populateSellersTable() {
   const provinceFilter = document.getElementById('sellerProvinceFilter')?.value || 'all';
   const statusFilter = document.getElementById('sellerStatusFilter')?.value || 'all';
   const regStatusFilter = document.getElementById('sellerRegStatusFilter')?.value || 'all';
+  const perPage = document.getElementById('sellersPerPage')?.value || '20';
   
   // Apply filters
-  sellers = searchSellers(sellers, searchTerm);
-  sellers = filterSellers(sellers, provinceFilter, statusFilter, regStatusFilter);
+  const filteredSellers = filterSellers(searchSellers(sellers, searchTerm), provinceFilter, statusFilter, regStatusFilter);
   
   // Apply sorting
   if (sellerSortField) {
-    sellers.sort((a, b) => {
+    filteredSellers.sort((a, b) => {
       const aVal = (a[sellerSortField] || '').toString().toLowerCase();
       const bVal = (b[sellerSortField] || '').toString().toLowerCase();
       
@@ -2796,9 +2796,12 @@ async function populateSellersTable() {
     });
   }
   
+  // Apply pagination
+  const paginatedData = paginate(filteredSellers, currentSellersPage, perPage);
+  
   tbody.innerHTML = "";
 
-  if (sellers.length === 0) {
+  if (filteredSellers.length === 0) {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td colspan="6" style="text-align: center;">
@@ -2807,10 +2810,11 @@ async function populateSellersTable() {
       </td>
     `;
     tbody.appendChild(row);
+    document.getElementById('sellersPaginationInfo').textContent = 'Showing 0 of 0 items';
     return;
   }
 
-  sellers.forEach((seller) => {
+  paginatedData.data.forEach((seller) => {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${seller.ntn}</td>
@@ -2824,6 +2828,18 @@ async function populateSellersTable() {
       </td>
     `;
     tbody.appendChild(row);
+  });
+  
+  // Update pagination info and controls
+  const paginationInfo = document.getElementById('sellersPaginationInfo');
+  if (paginationInfo) {
+    paginationInfo.textContent = 
+      `Showing ${paginatedData.startIndex || 0}-${paginatedData.endIndex || 0} of ${paginatedData.totalItems || 0} items`;
+  }
+  
+  createPaginationControls('sellersPaginationControls', paginatedData.currentPage, paginatedData.totalPages, (page) => {
+    currentSellersPage = page;
+    populateSellersTable();
   });
   
   // Populate province filter options
@@ -2858,15 +2874,18 @@ function initSellerFilters() {
   const provinceFilter = document.getElementById('sellerProvinceFilter');
   const statusFilter = document.getElementById('sellerStatusFilter');
   const regStatusFilter = document.getElementById('sellerRegStatusFilter');
+  const perPageFilter = document.getElementById('sellersPerPage');
 
   // Handle search input
   searchInput?.addEventListener('input', debounce(() => {
+    currentSellersPage = 1;
     populateSellersTable();
   }, 300));
 
   // Handle filters
-  [provinceFilter, statusFilter, regStatusFilter].forEach(filter => {
+  [provinceFilter, statusFilter, regStatusFilter, perPageFilter].forEach(filter => {
     filter?.addEventListener('change', () => {
+      currentSellersPage = 1;
       populateSellersTable();
     });
   });
@@ -2935,14 +2954,14 @@ async function populateBuyersTable() {
   const provinceFilter = document.getElementById('buyerProvinceFilter')?.value || 'all';
   const regTypeFilter = document.getElementById('buyerRegTypeFilter')?.value || 'all';
   const statusFilter = document.getElementById('buyerStatusFilter')?.value || 'all';
+  const perPage = document.getElementById('buyersPerPage')?.value || '20';
   
   // Apply filters
-  buyers = searchBuyers(buyers, searchTerm);
-  buyers = filterBuyers(buyers, provinceFilter, regTypeFilter, statusFilter);
+  const filteredBuyers = filterBuyers(searchBuyers(buyers, searchTerm), provinceFilter, regTypeFilter, statusFilter);
   
   // Apply sorting
   if (buyerSortField) {
-    buyers.sort((a, b) => {
+    filteredBuyers.sort((a, b) => {
       const aVal = (a[buyerSortField] || '').toString().toLowerCase();
       const bVal = (b[buyerSortField] || '').toString().toLowerCase();
       
@@ -2954,9 +2973,12 @@ async function populateBuyersTable() {
     });
   }
   
+  // Apply pagination
+  const paginatedData = paginate(filteredBuyers, currentBuyersPage, perPage);
+  
   tbody.innerHTML = "";
 
-  if (buyers.length === 0) {
+  if (filteredBuyers.length === 0) {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td colspan="6" style="text-align: center;">
@@ -2965,10 +2987,11 @@ async function populateBuyersTable() {
       </td>
     `;
     tbody.appendChild(row);
+    document.getElementById('buyersPaginationInfo').textContent = 'Showing 0 of 0 items';
     return;
   }
 
-  buyers.forEach((buyer) => {
+  paginatedData.data.forEach((buyer) => {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${buyer.businessName}</td>
@@ -2982,6 +3005,18 @@ async function populateBuyersTable() {
       </td>
     `;
     tbody.appendChild(row);
+  });
+  
+  // Update pagination info and controls
+  const paginationInfo = document.getElementById('buyersPaginationInfo');
+  if (paginationInfo) {
+    paginationInfo.textContent = 
+      `Showing ${paginatedData.startIndex || 0}-${paginatedData.endIndex || 0} of ${paginatedData.totalItems || 0} items`;
+  }
+  
+  createPaginationControls('buyersPaginationControls', paginatedData.currentPage, paginatedData.totalPages, (page) => {
+    currentBuyersPage = page;
+    populateBuyersTable();
   });
   
   // Populate province filter options
@@ -3016,15 +3051,18 @@ function initBuyerFilters() {
   const provinceFilter = document.getElementById('buyerProvinceFilter');
   const regTypeFilter = document.getElementById('buyerRegTypeFilter');
   const statusFilter = document.getElementById('buyerStatusFilter');
+  const perPageFilter = document.getElementById('buyersPerPage');
 
   // Handle search input
   searchInput?.addEventListener('input', debounce(() => {
+    currentBuyersPage = 1;
     populateBuyersTable();
   }, 300));
 
   // Handle filters
-  [provinceFilter, regTypeFilter, statusFilter].forEach(filter => {
+  [provinceFilter, regTypeFilter, statusFilter, perPageFilter].forEach(filter => {
     filter?.addEventListener('change', () => {
+      currentBuyersPage = 1;
       populateBuyersTable();
     });
   });
@@ -5485,23 +5523,13 @@ async function populateInvoicesTable() {
   let invoices = await dbGetAll(STORE_NAMES.invoices);
   const tbody = DOMElements.invoicesTableBody;
 
-  if (!invoices || invoices.length === 0) {
-    const row = document.createElement("tr");
-    row.innerHTML = `<td colspan="8" style="text-align:center;color:#888;">
-      No Invoice Data found in Record
-      <button class="btn btn-primary" onclick="openAddInvoiceModal()">Add Invoice</button>
-    </td>`;
-    tbody.appendChild(row);
-    return;
-  }
-
-
   // Get filter values
   const searchTerm = document.getElementById('invoiceSearch')?.value || '';
   const statusFilter = document.getElementById('statusFilter')?.value || 'all';
   const dateFilter = document.getElementById('dateFilter')?.value || 'all';
   const dateFrom = document.getElementById('dateFrom')?.value;
   const dateTo = document.getElementById('dateTo')?.value;
+  const perPage = document.getElementById('invoicesPerPage')?.value || '20';
 
   // Apply filters
   invoices = searchInvoices(invoices, searchTerm);
@@ -5574,15 +5602,20 @@ async function populateInvoicesTable() {
     });
   }
 
+  // Apply pagination
+  const paginatedData = paginate(invoices, currentInvoicesPage, perPage);
+  
   tbody.innerHTML = "";
   if (!invoices || invoices.length === 0) {
     const row = document.createElement("tr");
-    row.innerHTML = `<td colspan="8" style="text-align:center;color:#888;">No invoices found.</td>`;
+    row.innerHTML = `<td colspan="8" style="text-align:center;color:#888;">
+      No Invoice Data found in Record
+      <button class="btn btn-primary" onclick="switchToCreateInvoiceTab()">Add Invoice</button>
+    </td>`;
     tbody.appendChild(row);
+    document.getElementById('invoicesPaginationInfo').textContent = 'Showing 0 of 0 items';
     return;
   }
-  
-  const sortedInvoices = invoices;
 
   // Update table header to include ID column with sorting
   const thead = document.querySelector('#invoicesTable thead');
@@ -5615,7 +5648,7 @@ async function populateInvoicesTable() {
     `;
   }
 
-  sortedInvoices.forEach((invoice) => {
+  paginatedData.data.forEach((invoice) => {
     const isDraft = invoice.status === 'draft';
     const isSubmitted = invoice?.invoiceNumber;
     const statusText = isSubmitted ? 'Submitted' : (invoice.status || 'Draft');
@@ -5642,8 +5675,6 @@ async function populateInvoicesTable() {
           <i class="fas fa-copy"></i>
         </button>
         
-
-
         <button class="btn btn-sm btn-danger" onclick="deleteInvoice('${invoice?.id}')" 
                 ${!isDraft ? 'disabled' : ''} title="Delete Invoice">
           <i class="fas fa-trash"></i>
@@ -5651,6 +5682,18 @@ async function populateInvoicesTable() {
       </td>
     `;
     tbody.appendChild(row);
+  });
+  
+  // Update pagination info and controls
+  const paginationInfo = document.getElementById('invoicesPaginationInfo');
+  if (paginationInfo) {
+    paginationInfo.textContent = 
+      `Showing ${paginatedData.startIndex || 0}-${paginatedData.endIndex || 0} of ${paginatedData.totalItems || 0} items`;
+  }
+  
+  createPaginationControls('invoicesPaginationControls', paginatedData.currentPage, paginatedData.totalPages, (page) => {
+    currentInvoicesPage = page;
+    populateInvoicesTable();
   });
 }
 
@@ -5757,6 +5800,9 @@ function initInvoiceFilters() {
   const dateFilter = document.getElementById('dateFilter');
   const customDateRange = document.getElementById('customDateRange');
   const applyDateFilter = document.getElementById('applyDateFilter');
+   const perPageFilter = document.getElementById('invoicesPerPage');
+
+
 
   // Handle search input
   searchInput?.addEventListener('input', debounce(() => {
@@ -5782,6 +5828,15 @@ function initInvoiceFilters() {
   applyDateFilter?.addEventListener('click', () => {
     populateInvoicesTable();
   });
+
+  // Handle filters
+  [perPageFilter].forEach(filter => {
+    filter?.addEventListener('change', () => {
+      currentInvoicesPage = 1;
+      populateInvoicesTable();
+    });
+  });
+
 }
 
 // Debounce function for search input

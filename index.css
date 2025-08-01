@@ -420,6 +420,7 @@
     margin-bottom: 20px;
     box-shadow: var(--shadow);
     border: 1px solid #eaeaea;
+    overflow: hidden;
   }
   
   /* Card Header CSS */
@@ -577,26 +578,93 @@
     font-size: 0.85rem;
   }
   
+  /* Table Container with Sticky Elements */
+  .table-container {
+    position: relative;
+    height: 70vh;
+    border: 1px solid #dee2e6;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Manage tabs table containers */
+  #invoices-tab .table-container,
+  #products-tab .table-container,
+  #sellers-tab .table-container,
+  #buyers-tab .table-container {
+    height: 70vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Filters Section - Sticky */
+  .filters-section {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: white;
+    border-bottom: 1px solid #dee2e6;
+    padding: 15px;
+  }
+  
+  /* Table Wrapper - Scrollable */
+  .table-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    position: relative;
+  }
+  
+  /* Manage tabs table wrappers */
+  #invoices-tab .table-wrapper,
+  #products-tab .table-wrapper,
+  #sellers-tab .table-wrapper,
+  #buyers-tab .table-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+    position: relative;
+  }
+  
   /* Items Table */
   .items-table {
     width: 100%;
     border-collapse: collapse;
-    margin: 20px 0;
+    margin: 0;
   }
   
   /* Items Table Header and Data CSS */
   .items-table th, .items-table td {
     padding: 12px 15px;
     text-align: left;
-    border-bottom: 1px solid #eaeaea;
-    vertical-align: top;
+    border: 1px solid #dee2e6;
+    vertical-align: middle;
   }
   
-  /* Items Table Header CSS */
+  /* Items Table Header CSS - Sticky */
   .items-table th {
     background-color: var(--fbr-gray);
     font-weight: 600;
     color: #495057;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 2px solid #dee2e6;
+  }
+  
+  /* Pagination Container - Sticky */
+  .pagination-container {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    background: white;
+    border-top: 1px solid #dee2e6;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
   
   .summary-info {
@@ -657,6 +725,15 @@
     background-color: rgba(0, 82, 165, 0.05);
   }
   
+  /* Uniform Row Borders */
+  .items-table tbody tr {
+    border-bottom: 1px solid #dee2e6;
+  }
+  
+  .items-table tbody tr:last-child {
+    border-bottom: none;
+  }
+  
   /* Items Table Input and Select CSS */
   .items-table input, .items-table select {
     width: 100%;
@@ -669,6 +746,9 @@
   .action-cell {
     display: flex;
     gap: 5px;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
   }
   
   /* Total Row CSS */
