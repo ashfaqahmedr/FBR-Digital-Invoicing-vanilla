@@ -51,8 +51,7 @@ function openDB() {
   });
 }
 
-// Import DOMPurify for sanitizing input
-// DOMPurify is a library that helps prevent XSS attacks by sanitizing HTML and other user-generated content
+
 async function dbGet(store, key) {
   try {
     const db = await openDB();
@@ -121,6 +120,25 @@ async function dbDelete(store, key) {
     console.warn(`Error accessing store '${store}':`, error);
     return null;
   }
+}
+
+async function dbSetAll(store, items) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([store], 'readwrite');
+    const objectStore = tx.objectStore(store);
+    
+    // Clear existing data
+    objectStore.clear();
+    
+    // Add all items
+    items.forEach(item => {
+      objectStore.put(item);
+    });
+    
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(new Error(`Failed to save all to ${store}: ${e.target.error?.message || e}`));
+  });
 }
 
 // === Migrate localStorage data to IndexedDB on first load ===
@@ -195,6 +213,8 @@ const DOMElements = {
   successResponseJson: document.getElementById("successResponseJson"),
   successResponseData: document.getElementById("successResponseData"),
   successModal: document.getElementById("successModal"),
+   closeSuccessModal: document.getElementById("closeSuccessModal"),
+  closeSuccessModalBtn: document.getElementById("closeSuccessModalBtn"),
   previewModal: document.getElementById("previewModal"),
   closePreviewModal: document.getElementById("closePreviewModal"),
   closePreviewModalBtn: document.getElementById("closePreviewModalBtn"),
@@ -203,8 +223,6 @@ const DOMElements = {
   downloadPreviewBtn: document.getElementById("downloadPreviewBtn"),
   printPreviewBtn: document.getElementById("printPreviewBtn"),
   createDummyInvoiceBtn: document.getElementById("createDummyInvoiceBtn"),
-  closeSuccessModal: document.getElementById("closeSuccessModal"),
-  closeSuccessModalBtn: document.getElementById("closeSuccessModalBtn"),
   sellerNTN: document.getElementById("sellerNTN"),
   sellerBusinessName: document.getElementById("sellerBusinessName"),
   sellerBusinessActivity: document.getElementById("sellerBusinessActivity"),
@@ -1056,61 +1074,129 @@ function showModalError(modalId, message) {
 
 // Utility functions
 
-async function generateInvoiceRef(seller, invoiceType) {
+// Unified function to get next invoice reference number
+async function getNextInvoiceRefNumber(sellerNtn, invoiceType) {
   const prefix = invoiceType === "Sale Invoice" ? "SI" : "DN"
-  const invoices = await dbGetAll(STORE_NAMES.invoices)
   
-  // Get existing invoice numbers for this seller and type
+  // Get all invoices and filter by seller and type
+  const invoices = await dbGetAll(STORE_NAMES.invoices)
+  // console.log('All invoices:', invoices.map(inv => ({ id: inv.id, sellerNTN: inv.invoicePayload?.sellerNTNCNIC || inv.sellerNTNCNIC, type: inv.invoicePayload?.invoiceType || inv.invoiceType, ref: inv.invoicePayload?.invoiceRefNo || inv.invoiceRefNo })))
+  
   const existingRefs = invoices
-    .filter(inv => inv.sellerNTNCNIC === seller.ntn && inv.invoiceType === invoiceType)
-    .map(inv => inv.invoiceRefNo || inv.invoiceRef || "")
-    .filter(ref => ref.startsWith(prefix))
+    .filter(inv => (inv.invoicePayload?.sellerNTNCNIC || inv.sellerNTNCNIC) === sellerNtn && (inv.invoicePayload?.invoiceType || inv.invoiceType) === invoiceType)
+    .map(inv => inv.invoicePayload?.invoiceRefNo || inv.invoiceRefNo || "")
+    .filter(ref => ref && ref.startsWith(prefix))
     .map(ref => {
-      const numPart = ref.split("-")[1];
-      return numPart ? parseInt(numPart, 10) : 0;
+      const numPart = ref.split("-")[1]
+      // console.log('getNextInvoiceRefNumber - Ref:', ref, 'Num Part:', numPart)
+      return numPart ? parseInt(numPart, 10) : 0
     })
     .sort((a, b) => b - a)
   
-  const baseId = invoiceType === "Sale Invoice" ? 
-    (typeof seller.lastSaleInvoiceId === 'string' ? parseInt(seller.lastSaleInvoiceId, 10) : seller.lastSaleInvoiceId) : 
-    (typeof seller.lastDebitNoteId === 'string' ? parseInt(seller.lastDebitNoteId, 10) : seller.lastDebitNoteId);
-    
-  const nextId = Math.max(existingRefs[0] || 0, baseId || 0) + 1
-  return `${prefix}-${nextId.toString().padStart(4, "0")}`
+  // Get seller's stored ID
+  const seller = await dbGet(STORE_NAMES.sellers, sellerNtn)
+  const sellerStoredId = invoiceType === "Sale Invoice" ? 
+    (seller?.lastSaleInvoiceId || 1) : (seller?.lastDebitNoteId || 1)
+  
+  // Get the highest number from both sources
+  const highestFromInvoices = existingRefs[0] || 0
+  const nextId = Math.max(highestFromInvoices, sellerStoredId || 0) + 1
+  
+  const returnRef = `${prefix}-${nextId.toString().padStart(4, "0")}`
+  // console.log('getNextInvoiceRefNumber - Seller:', sellerNtn, 'Type:', invoiceType, 'Existing refs:', existingRefs, 'Highest from invoices:', highestFromInvoices, 'Seller stored:', sellerStoredId, 'Next ID:', nextId, 'Ref:', returnRef)
+  return returnRef
 }
 
-async function updateSellerInvoiceId(sellerId, invoiceType) {
-  const sellers = await dbGetAll(STORE_NAMES.sellers)
-  const sellerIndex = sellers.findIndex((s) => s.id === sellerId)
-  if (sellerIndex !== -1) {
-    if (invoiceType === "Sale Invoice") {
-      sellers[sellerIndex].lastSaleInvoiceId = (sellers[sellerIndex].lastSaleInvoiceId || 1) + 1
-    } else {
-      sellers[sellerIndex].lastDebitNoteId = (sellers[sellerIndex].lastDebitNoteId || 1) + 1
-    }
-    saveToStorage("fbrSellers", sellers)
+
+// Update seller's invoice ID after successful submission
+async function updateSellerInvoiceId(sellerNtn, invoiceType) {
+  const seller = await dbGet(STORE_NAMES.sellers, sellerNtn)
+  if (!seller) return
+  
+  // Get the current highest reference number and increment it
+  const currentRef = await getNextInvoiceRefNumber(sellerNtn, invoiceType)
+  const refNumber = currentRef.split('-')[1]
+  const nextId = parseInt(refNumber, 10)
+  
+  if (invoiceType === "Sale Invoice") {
+    seller.lastSaleInvoiceId = nextId
+  } else {
+    seller.lastDebitNoteId = nextId
+  }
+  await dbSet(STORE_NAMES.sellers, seller)
+}
+
+// Reset invoice reference number - called on app load, form reset, and after successful submission
+async function resetInvoiceReference() {
+  const sellerSelect = DOMElements.sellerSelect
+  const invoiceRefField = DOMElements.invoiceRef
+
+  if (!sellerSelect.value || !invoiceRefField) return
+
+  const seller = await dbGet(STORE_NAMES.sellers, sellerSelect.value)
+  if (seller) {
+    // console.log('resetInvoiceReference - Seller data:', {
+    //   ntn: seller.ntn,
+    //   lastSaleInvoiceId: seller.lastSaleInvoiceId,
+    //   lastDebitNoteId: seller.lastDebitNoteId
+    // });
+    
+    const invoiceType = DOMElements.invoiceType.value || "Sale Invoice"
+    // console.log('resetInvoiceReference - Invoice Type:', invoiceType);
+
+
+    invoiceRefField.value = await getNextInvoiceRefNumber(seller.ntn, invoiceType)
+
+    // console.log('resetInvoiceReference - New Invoice Ref:', invoiceRefField.value);
   }
 }
+
+// Reset to initial state
+async function resetToInitialState() {
+  // Clear editing state
+  currentEditingInvoice = null;
+  originalInvoiceState = null;
+  
+  // Reset form fields
+  DOMElements.invoiceDate.value = getCurrentDate();
+  DOMElements.invoiceType.value = "Sale Invoice";
+  DOMElements.currency.value = "PKR";
+  
+  // Clear items array and reset counter
+  items = [];
+  itemCounter = 0;
+
+  
+  
+  // Add only one default item
+  await addNewItem();
+  
+  // Reset invoice reference
+  await resetInvoiceReference();
+  
+  // Update UI
+  updateEditStateUI(false);
+  updateInvoiceTotal();
+}
+
+
 
 function ensureBearerToken(token) {
   if (!token) return ""
   return token.startsWith("Bearer ") ? token : `Bearer ${token}`
 }
 
-// function formatDateForAPI(date, format = "DD-MMM-YYYY") {
-//   const dateObj = new Date(date)
-//   if (format === "DD-MMM-YYYY") {
-//     return dateObj
-//       .toLocaleDateString("en-GB", {
-//         day: "2-digit",
-//         month: "short",
-//         year: "numeric",
-//       })
-//       .replace(/ /g, "-")
-//   } else {
-//     return dateObj.toISOString().split("T")[0]
-//   }
-// }
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
 
 // Import DOMPurify for sanitizing HTML
 // DOMPurify is a library that sanitizes HTML and prevents XSS attacks
@@ -1130,6 +1216,45 @@ function formatResponse(response) {
   }
   return JSON.stringify(response, null, 2)
 }
+
+// Get current date in specified format
+function getCurrentDate(format = 'YYYY-MM-DD') {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  
+  switch (format) {
+    case 'YYYY-MM-DD':
+      return `${year}-${month}-${day}`
+    case 'DD-MM-YYYY':
+      return `${day}-${month}-${year}`
+    case 'MM/DD/YYYY':
+      return `${month}/${day}/${year}`
+    default:
+      return `${year}-${month}-${day}`
+  }
+}
+
+// Format date for API calls
+function formatDateForAPI(dateString, format = 'DD-MMM-YYYY') {
+  if (!dateString) return getCurrentDate('DD-MMM-YYYY')
+  
+  const date = new Date(dateString)
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = date.toLocaleString('en-US', { month: 'short' }).toUpperCase()
+  const year = date.getFullYear()
+  
+  switch (format) {
+    case 'DD-MMM-YYYY':
+      return `${day}-${month}-${year}`
+    case 'YYYY-MM-DD':
+      return dateString
+    default:
+      return `${day}-${month}-${year}`
+  }
+}
+
 
 async function getSelectedSeller() {
   const sellerKey = DOMElements.sellerSelect.value
@@ -1239,8 +1364,8 @@ async function handleSuccessfulSubmission(response, seller, invoicePayload) {
     // Save the invoice to the database
     await dbSet(STORE_NAMES.invoices, invoiceData);
     
-    // Update the invoice reference number for the seller
-    await updateSellerInvoiceId(seller.ntn, invoicePayload.invoiceType);
+    // Increment the invoice reference number for the seller
+   
     
     // Store the invoice data for the success modal
     lastSubmissionResponse = invoiceData;
@@ -1273,170 +1398,125 @@ function enrichResponseWithInvoiceData(response, invoicePayload) {
   };
 }
 
-function displaySuccessModal(response) {
-  if (DOMElements.successModal) {
-    // Store the response for later use in preview
-    lastSubmissionResponse = response;
-    
-    // Update the FBR Invoice Number display
-    document.getElementById("fbrInvoiceNumber").textContent = response.fbrInvoiceNumber || "N/A";
-    
-    // Format the response for display
-    const formattedResponse = JSON.stringify(response, null, 2);
-    
-    // Create a container for the results
-    const resultsContainer = document.createElement('div');
-    resultsContainer.className = 'results-container';
-    resultsContainer.style.marginTop = '15px';
-    resultsContainer.style.position = 'relative';
-    
-    // Create a textarea to hold the JSON response
-    const textarea = document.createElement('textarea');
-    textarea.id = 'responseJsonTextarea';
-    textarea.className = 'form-control';
-    textarea.value = formattedResponse;
-    textarea.style.minHeight = '200px';
-    textarea.style.fontFamily = 'monospace';
-    textarea.style.resize = 'vertical';
-    textarea.readOnly = true;
-    
-    // Create copy button
-    const copyButton = document.createElement('button');
-    copyButton.className = 'btn btn-sm btn-outline-secondary';
-    copyButton.style.position = 'absolute';
-    copyButton.style.top = '10px';
-    copyButton.style.right = '10px';
-    copyButton.style.zIndex = '10';
-    copyButton.innerHTML = '<i class="far fa-copy"></i> Copy';
-    copyButton.onclick = () => {
-      textarea.select();
-      document.execCommand('copy');
-      
-      // Change button text temporarily
-      const originalText = copyButton.innerHTML;
-      copyButton.innerHTML = '<i class="fas fa-check"></i> Copied!';
-      copyButton.disabled = true;
-      
-      // Reset button after 2 seconds
-      setTimeout(() => {
-        copyButton.innerHTML = originalText;
-        copyButton.disabled = false;
-      }, 2000);
-    };
-    
-    // Add elements to container
-    resultsContainer.appendChild(textarea);
-    resultsContainer.appendChild(copyButton);
-    
-    // Clear and update the response container
-    const respContainer = DOMElements.successResponseData;
-    respContainer.innerHTML = '';
-    respContainer.appendChild(resultsContainer);
-    
-    // Add preview button to success modal
-    const previewButton = document.createElement('button');
-    previewButton.className = 'btn btn-primary';
-    previewButton.innerHTML = '<i class="fas fa-eye"></i> Preview As Invoice';
-    previewButton.style.marginRight = '10px';
-    previewButton.onclick = () => generateInvoicePDF(response, false, true);
-    
-    const buttonContainer = document.querySelector('.modal-footer .left-buttons');
-    if (buttonContainer) {
-      // Remove any existing preview button first
-      const existingPreviewBtn = buttonContainer.querySelector('.preview-invoice-btn');
-      if (existingPreviewBtn) {
-        existingPreviewBtn.remove();
-      }
-      
-      // Add the new preview button
-      previewButton.classList.add('preview-invoice-btn');
-      buttonContainer.prepend(previewButton);
-    }
 
-    let html = `<div style="margin-top: 20px;">
-        <h3 style="color: #28a745; margin-bottom: 10px; font-size: 1rem;">✅ Submission Results</h3>
+function switchSuccessTab(tabId) {
+  // Hide all tab contents
+  document.querySelectorAll(".tab-content").forEach((el) => el.classList.remove("active"));
+  // Deactivate all buttons
+  document.querySelectorAll(".tab-nav button").forEach((btn) => btn.classList.remove("tab-active"));
+  
+  // Activate the requested tab
+  const targetTab = document.getElementById(tabId);
+  const targetButton = document.querySelector(`.tab-nav button[data-tab="${tabId}"]`);
+
+  if (targetTab && targetButton) {
+    targetTab.classList.add("active");
+    targetButton.classList.add("tab-active");
+  } else {
+    console.warn(`Tab or button not found for tabId: ${tabId}`);
+  }
+}
+
+
+
+async function displaySuccessModal(response) {
+  if (!DOMElements.successModal) return;
+
+  lastSubmissionResponse = response;
+  DOMElements.fbrInvoiceNumber.textContent = response.fbrInvoiceNumber || "N/A";
+
+  // JSON Response formatted
+  const formattedResponse = JSON.stringify(response, null, 2);
+  DOMElements.successResponseJson.textContent = formattedResponse;
+
+  // Construct HTML for Table view
+  let html = `<div style="margin-top: 20px;">
+      <h3 style="color: #28a745; margin-bottom: 10px; font-size: 1rem;">✅ Submission Results</h3>
+      <table class="response-table">
+        <thead>
+          <tr>
+            <th>Invoice Number</th>
+            <th>Submission Date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>${response.invoiceNumber || response.fbrInvoiceNumber || 'Pending'}</strong></td>
+            <td>${response.dated ? formatDateTime(response.dated) : formatDateTime(new Date())}</td>
+            <td><span class="status-indicator status-success">Submitted</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+
+  // Item-level validation statuses if available
+  if (response.validationResponse?.invoiceStatuses?.length > 0) {
+    html += `<div style="margin-top: 15px;">
+        <h4 style="color: #0052A5; font-size: 0.9rem;">📦 Item Processing Status</h4>
         <table class="response-table">
           <thead>
             <tr>
+              <th>Item #</th>
+              <th>Status Code</th>
               <th>Invoice Number</th>
-              <th>Submission Date</th>
               <th>Status</th>
+              <th>Error Code</th>
+              <th>Error</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody>`;
+    response.validationResponse.invoiceStatuses.forEach((item) => {
+      html += `
             <tr>
-              <td><strong>${response.invoiceNumber || response.fbrInvoiceNumber || 'Pending'}</strong></td>
-              <td>${response.dated ? formatDateTime(response.dated) : formatDateTime(new Date())}</td>
-              <td><span class="status-indicator status-success">Submitted</span></td>
-            </tr>
+              <td>${item.itemSNo}</td>
+              <td>${item.statusCode || '-'}</td>
+              <td>${item.invoiceNo || '-'}</td>
+              <td>${item.status || '-'}</td>
+              <td>${item.errorCode || '-'}</td>
+              <td>${item.error || '-'}</td>
+            </tr>`;
+    });
+    html += `
           </tbody>
         </table>
       </div>`;
+  }
 
-    // If item level statuses are available, append another table
-    if (response.validationResponse?.invoiceStatuses?.length > 0) {
-      html += `<div style="margin-top: 15px;">
-          <h4 style="color: #0052A5; font-size: 0.9rem;">📦 Item Processing Status</h4>
-          <table class="response-table">
-            <thead>
-              <tr>
-                <th>Item #</th>
-                <th>Status Code</th>
-                <th>Invoice Number</th>
-                <th>Status</th>
-                <th>Error Code</th>
-                <th>Error</th>
-              </tr>
-            </thead>
-            <tbody>`;
-      response.validationResponse.invoiceStatuses.forEach((item, idx) => {
-        html += `
-              <tr>
-                <td>${item.itemSNo}</td>
-                <td>${item.statusCode || '-'}</td>
-                <td>${item.invoiceNo || '-'}</td>
-                <td>${item.status || '-'}</td>
-                <td>${item.errorCode || '-'}</td>
-                <td>${item.error || '-'}</td>
-              </tr>`;
-      });
-      html += `
-            </tbody>
-          </table>
-        </div>`;
-    }
+  // Inject table HTML
+  DOMElements.successResponseData.innerHTML = html;
 
-    respContainer.innerHTML = html;
-    
-    // Initialize tab navigation for the success modal
-    const tabButtons = document.querySelectorAll(".tab-nav button");
-    const tabContents = document.querySelectorAll(".tab-content");
-    
-    // Set up tab click handlers
-    tabButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        const tabId = button.getAttribute('data-tab');
-        
-        // Update active tab button
-        tabButtons.forEach(btn => btn.classList.remove('tab-active'));
-        button.classList.add('tab-active');
-        
-        // Show corresponding tab content
-        tabContents.forEach(tab => tab.classList.remove('active'));
-        const activeTab = document.getElementById(tabId);
-        if (activeTab) activeTab.classList.add('active');
-      });
+  // Explicitly set table tab as active
+  switchSuccessTab('table-tab');
+  DOMElements.successModal.classList.add("active");
+
+  // Attach listeners to toggle buttons (ensure only attached once)
+  const tabButtons = document.querySelectorAll(".tab-nav button");
+  tabButtons.forEach((btn) => {
+    // Remove existing listeners to prevent duplicates
+    const newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    newBtn.addEventListener("click", (e) => {
+      const tabId = e.currentTarget.getAttribute("data-tab");
+      switchSuccessTab(tabId);
     });
-    
-    // Make sure table tab is active by default
-    const tableTabBtn = document.querySelector('[data-tab="table-tab"]');
-    if (tableTabBtn) {
-      tableTabBtn.click(); // This will trigger the click handler to show the table
-    }
-    
-    DOMElements.successModal.classList.add("active");
+  });
+
+  // Create "Preview" button and inject into modal footer
+  const buttonContainer = document.querySelector('.modal-footer .left-buttons');
+  if (buttonContainer) {
+    const existingPreviewBtn = buttonContainer.querySelector('.preview-invoice-btn');
+    if (existingPreviewBtn) existingPreviewBtn.remove();
+
+    const previewButton = document.createElement('button');
+    previewButton.className = 'btn btn-primary preview-invoice-btn';
+    previewButton.innerHTML = '<i class="fas fa-eye"></i> Preview As Invoice';
+    previewButton.style.marginRight = '10px';
+    previewButton.onclick = () => generateInvoicePDF(response, false, true);
+    buttonContainer.prepend(previewButton);
   }
 }
+
 
 function handleFailedSubmission(response) {
   const errorMsg = (response && (response.message || response.error || response.statusMessage)) || "Unknown error from FBR.";
@@ -1689,7 +1769,7 @@ async function fetchTaxRateOptions(serviceTypeId, buyerProvinceId, date) {
   try {
    
     console.log("serviceTypeId", serviceTypeId)
-    console.log("buyerProvinceId", buyerProvinceId)
+    console.log("buyerProvinceId ", buyerProvinceId)
     console.log("date", date)
     
     const province = provinces.find((p) => p.stateProvinceDesc === buyerProvinceId)
@@ -1711,7 +1791,7 @@ async function fetchTaxRateOptions(serviceTypeId, buyerProvinceId, date) {
 async function fetchSroSchedules(rateId, date, provinceCode) {
   try {
     
-    const url = `${API_URLS.SroSchedule}?rate_id=${rateId}&date=${date}&origination_supplier_csv=${provinceCode}`
+    const url = `${API_URLS.SroSchedule}?rate_id=${rateId}&date=${formatDateForAPI(date, "DD-MMM-YYYY")}&origination_supplier_csv=${provinceCode}`
     const response = await fetchWithAuth(url)
 
 
@@ -1846,6 +1926,7 @@ async function populateInvoiceScenarios(sellerId, selectedScenarioId = null) {
   const scenarioSelect = DOMElements.scenarioId
   if (!scenarioSelect) return
 
+  // Clear existing options first
   scenarioSelect.innerHTML = '<option value="">Select Scenario</option>'
 
   const sellers = await dbGetAll(STORE_NAMES.sellers) 
@@ -1853,14 +1934,19 @@ async function populateInvoiceScenarios(sellerId, selectedScenarioId = null) {
 
   if (seller && seller.scenarioIds) {
     const sellerScenarios = Array.isArray(seller.scenarioIds) ? seller.scenarioIds : seller.scenarioIds.split(",")
+    const addedScenarios = new Set(); // Track added scenarios to prevent duplicates
 
     sellerScenarios.forEach((scenarioId) => {
-      const scenarioDesc = scenarioDescriptions.find((s) => s.scenarioId === scenarioId.trim())
-      if (scenarioDesc) {
-        const option = document.createElement("option")
-        option.value = scenarioId.trim()
-        option.textContent = `${scenarioId.trim()} - ${scenarioDesc.description}`
-        scenarioSelect.appendChild(option)
+      const trimmedId = scenarioId.trim();
+      if (!addedScenarios.has(trimmedId)) {
+        const scenarioDesc = scenarioDescriptions.find((s) => s.scenarioId === trimmedId)
+        if (scenarioDesc) {
+          const option = document.createElement("option")
+          option.value = trimmedId
+          option.textContent = `${trimmedId} - ${scenarioDesc.description}`
+          scenarioSelect.appendChild(option)
+          addedScenarios.add(trimmedId);
+        }
       }
     })
     
@@ -2159,13 +2245,12 @@ async function loadProductSroSchedules(rateId) {
   try {
     showProductModalLoader(true);
     const date = document.getElementById('productDate').value;
-    const formattedDate = formatDateForAPI(date, 'DD-MMM-YYYY');
     const originProvince = document.getElementById('productOriginProvince').value;
     
     const province = provinces.find(p => p.stateProvinceDesc === originProvince);
     const provinceCode = province ? province.stateProvinceCode : 1;
     
-    const sroScheduleOptions = await fetchSroSchedules(rateId, formattedDate, provinceCode);
+    const sroScheduleOptions = await fetchSroSchedules(rateId, date, provinceCode);
     
     if (sroScheduleOptions && sroScheduleOptions.length > 0) {
       const scheduleOptions = sroScheduleOptions.map(sro => ({ 
@@ -2285,7 +2370,7 @@ async function addProductToInvoice(product) {
   };
   
   const date = DOMElements.invoiceDate.value || new Date().toISOString().split('T')[0];
-  const formattedDate = formatDateForAPI(date, 'DD-MMM-YYYY');
+  const formattedDate = formatDateForAPI(date, 'YYYY-MM-DD');
   
   item.taxRateOptions = await fetchTaxRateOptions(item.serviceTypeId, buyer.province, formattedDate);
   
@@ -2297,7 +2382,7 @@ async function addProductToInvoice(product) {
     const province = provinces.find(p => p.stateProvinceDesc === buyer.province);
     const provinceCode = province ? province.stateProvinceCode : 1;
     
-    item.sroScheduleOptions = await fetchSroSchedules(item.rateId, formattedDate, provinceCode);
+    item.sroScheduleOptions = await fetchSroSchedules(item.rateId, date, provinceCode);
     
     if (item.sroScheduleOptions.length > 0) {
       item.sroSchedule = item.sroScheduleOptions[0].srO_ID;
@@ -2702,25 +2787,10 @@ async function populateBuyerSelect() {
 }
 
 async function updateInvoiceReference() {
-  const sellerSelect = DOMElements.sellerSelect
-  const invoiceRefField = DOMElements.invoiceRef
-
-  if (!sellerSelect.value || !invoiceRefField) return
-
-  const sellers = await dbGetAll(STORE_NAMES.sellers)
-  const seller = sellers.find((s) => s.ntn === sellerSelect.value)
-
-  if (seller) {
-    const invoiceType = DOMElements.invoiceType.value || "Sale Invoice"
-    if (currentEditingInvoice) {
-      // Generate new reference for editing
-      invoiceRefField.value = await getNextInvoiceRef(seller.ntn, invoiceType)
-    } else if (!invoiceRefField.value || invoiceRefField.value.trim() === '') {
-      // Use updated generation for new invoices
-      invoiceRefField.value = await generateInvoiceRef(seller, invoiceType)
-    }
-  }
+  await resetInvoiceReference()
 }
+
+
 
 let sellerSortField = null;
 let sellerSortDirection = 'asc';
@@ -3127,6 +3197,8 @@ async function updateItem(itemId, field, value) {
   const item = items.find((item) => item.id === itemId)
   if (!item) return
 
+  const selectedBuyer = await getSelectedBuyer()
+
   if (field === "hsCode") {
     const selectedHsCode = hsCodes.find((hs) => hs.hS_CODE === value)
     item.hsCode = value
@@ -3146,11 +3218,13 @@ async function updateItem(itemId, field, value) {
     item.serviceTypeId = Number.parseInt(value)
     item.saleType = selectedTransType ? selectedTransType.transactioN_DESC : item.saleType
 
-    const selectedBuyer = getSelectedBuyer()
+    
     
     if (selectedBuyer) {
       const date = DOMElements.invoiceDate.value || new Date().toISOString().split("T")[0]
       const formattedDate = formatDateForAPI(date, "DD-MMM-YYYY")
+
+
       item.taxRateOptions = await fetchTaxRateOptions(item.serviceTypeId, selectedBuyer.province, formattedDate)
       item.taxRate = item.taxRateOptions.length > 0 ? item.taxRateOptions[0].ratE_VALUE : 0
       item.rateId = item.taxRateOptions.length > 0 ? item.taxRateOptions[0].ratE_ID : null
@@ -3167,13 +3241,11 @@ async function updateItem(itemId, field, value) {
 
     if (item.rateId) {
       const date = DOMElements.invoiceDate.value || new Date().toISOString().split("T")[0]
-      const formattedDate = formatDateForAPI(date, "DD-MMM-YYYY")
-      const selectedBuyer = getSelectedBuyer()
       const province = provinces.find((p) => p.stateProvinceDesc === selectedBuyer.province)
       const provinceCode = province ? province.stateProvinceCode : 1
-      item.sroScheduleOptions = await fetchSroSchedules(item.rateId, formattedDate, provinceCode)
+      item.sroScheduleOptions = await fetchSroSchedules(item.rateId, date, provinceCode)
       item.sroSchedule = item.sroScheduleOptions.length > 0 ? item.sroScheduleOptions[0].srO_ID : ""
-      item.sroItemOptions = item.sroSchedule ? await loadSROItems(item.sroSchedule, formattedDate) : []
+      item.sroItemOptions = item.sroSchedule ? await loadSROItems(item.sroSchedule, date) : []
       item.sroItem = item.sroItemOptions.length > 0 ? item.sroItemOptions[0].srO_ITEM_ID : ""
       showToast("success", "Tax Rate Selected", "SRO options loaded")
     } else {
@@ -3650,14 +3722,17 @@ function initModals() {
   const closeSuccessModalHandler = async () => {
     DOMElements.successModal.classList.remove("active");
     
-    // Reset the form
-    await resetToInitialState();
+    // Clear the success modal content
+    const respContainer = DOMElements.successResponseData;
+    if (respContainer) {
+      respContainer.innerHTML = '';
+    }
+    
+    // Reset the form to initial state
+    // await resetToInitialState();
     
     // Show the create invoice tab
     switchToCreateInvoiceTab();
-    
-    // Refetch the invoice reference number
-    await updateInvoiceReference();
   };
   
   if (successModalCloseBtn) successModalCloseBtn.addEventListener("click", closeSuccessModalHandler);
@@ -3920,13 +3995,10 @@ function initModals() {
     }
     
     // Reset the form to initial state
-    await resetToInitialState();
+    // await resetToInitialState();
     
     // Ensure create invoice tab is visible and active
     switchToCreateInvoiceTab();
-    
-    // Re-fetch invoice reference number
-    await updateInvoiceReference();
     
     // Clear any existing success messages
     const successMessages = document.querySelectorAll('.toast.success');
@@ -4500,7 +4572,7 @@ function initPreviewModal() {
   const jsonModal = document.getElementById("jsonModal");
   const closeJsonModal = document.getElementById("closeJsonModal");
   const closeJsonModalBtn = document.getElementById("closeJsonModalBtn");
-  const copyJsonBtn = document.getElementById("copyJsonBtn");
+  // const copyJsonBtn = document.getElementById("copyJsonBtn");
   const jsonPayload = document.getElementById("jsonPayload");
   
   // Toggle JSON view in a separate modal
@@ -4522,16 +4594,6 @@ function initPreviewModal() {
   closeJsonModal?.addEventListener("click", closeJsonModalHandler);
   closeJsonModalBtn?.addEventListener("click", closeJsonModalHandler);
   
-  // Set up copy to clipboard functionality
-  copyJsonBtn?.addEventListener("click", () => {
-    navigator.clipboard.writeText(jsonPayload.textContent)
-      .then(() => showToast("success", "Copied!", "JSON copied to clipboard"))
-      .catch(err => {
-        console.error('Failed to copy:', err);
-        showToast("error", "Copy Failed", "Failed to copy JSON to clipboard");
-      });
-  });
-
   // Event listeners with consolidated handlers
   let isJsonView = false;
   const handlePreview = (isDummy) => {
@@ -4767,7 +4829,17 @@ function initFormActions() {
           items: items,
           totalAmount: items.reduce((sum, i) => sum + (i.quantity * i.unitPrice) + ((i.quantity * i.unitPrice) * (i.taxRate / 100)), 0),
           createdAt: currentEditingInvoice ? currentEditingInvoice.createdAt : new Date().toISOString(),
-          lastModified: new Date().toISOString()
+          dated: new Date().toISOString(),
+          lastModified: new Date().toISOString(),
+          invoicePayload: {
+            invoiceType: DOMElements.invoiceType.value,
+            invoiceDate: DOMElements.invoiceDate.value,
+            sellerNTNCNIC: seller.ntn,
+            buyerNTNCNIC: buyer.ntn,
+            invoiceRefNo: DOMElements.invoiceRef.value,
+            currency: DOMElements.currency.value,
+            items: items
+          }
         };
         
         await dbSet(STORE_NAMES.invoices, invoice);
@@ -4782,7 +4854,8 @@ function initFormActions() {
         }
         
         await populateInvoicesTable();
-        await updateInvoiceReference();
+        // Generate new reference number after saving draft
+        await resetInvoiceReference();
       } catch (e) {
         showToast("error", "Failed to Add Test Invoice", e.message || e);
       }
@@ -4801,22 +4874,22 @@ function initFormActions() {
   }
 
 // Call this function after FBR submission to save the submitted invoice
-async function saveSubmittedInvoiceToDB(invoiceResponse) {
-  try {
-    // Add status and meta fields
-    invoiceResponse.status = "submitted";
-    invoiceResponse.savedAt = new Date().toISOString();
-    await dbSet(STORE_NAMES.invoices, invoiceResponse);
-    await populateInvoicesTable();
-    showToast("success", "Submitted Invoice Saved", "Submitted invoice was saved successfully.");
-  } catch (e) {
-    showToast("error", "Failed to Save Submitted Invoice", e.message || e);
-  }
-}
+// async function saveSubmittedInvoiceToDB(invoiceResponse) {
+//   try {
+//     // Add status and meta fields
+//     invoiceResponse.status = "submitted";
+//     invoiceResponse.savedAt = new Date().toISOString();
+//     await dbSet(STORE_NAMES.invoices, invoiceResponse);
+//     await populateInvoicesTable();
+//     showToast("success", "Submitted Invoice Saved", "Submitted invoice was saved successfully.");
+//   } catch (e) {
+//     showToast("error", "Failed to Save Submitted Invoice", e.message || e);
+//   }
+// }
 
 
   // Invoice type change handler
-  DOMElements.invoiceType.addEventListener("change", updateInvoiceReference)
+  DOMElements.invoiceType.addEventListener("change", resetInvoiceReference)
 
   DOMElements.resetBtn.addEventListener("click", async () => {
     if (currentEditingInvoice && originalInvoiceState) {
@@ -5091,7 +5164,6 @@ const submitURL = isProduction ? API_URLS.submit.production : API_URLS.submit.sa
         lastSubmissionResponse = postResult
 
         // Update seller's invoice ID
-        // updateSellerInvoiceId(sellerKey, DOMElements.invoiceType.value)
         updateInvoiceReference()
 
         showToast(
@@ -5099,41 +5171,12 @@ const submitURL = isProduction ? API_URLS.submit.production : API_URLS.submit.sa
           "Invoice Submitted",
           `Invoice submitted successfully! FBR Invoice ID: ${postResult.invoiceNumber}`,
         )
-        // Save or update invoice
-        if (currentEditingInvoice) {
-          // Update existing invoice
-          const updatedInvoice = {
-            ...currentEditingInvoice,
-            ...postResult,
-            ...vr,
-            invoicePayload,
-            validationResponse,
-            lastModified: new Date().toISOString()
-          }
-          await dbSet(STORE_NAMES.invoices, updatedInvoice)
-          currentEditingInvoice = null
-          originalInvoiceState = null
-          updateEditStateUI(false)
-        } else {
-          // Save new invoice with standardized structure
-          const newInvoice = {
-            id: currentEditingInvoice || Date.now().toString(),
-            status: 'submitted',
-            invoiceNumber: postResponse.invoiceNumber || '',
-            dated: postResponse.dated || new Date().toISOString(),
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            invoicePayload: invoicePayload,
-            validationResponse: vr,
-            submissionResponse: submissionResponse
-          };
-          await dbSet(STORE_NAMES.invoices, newInvoice);
-        }
+        // Update the invoices table to show the new invoice
+        await populateInvoicesTable();
         
-        // Reset form after successful submission
-        setTimeout(async () => {
-          await resetToInitialState()
-        }, 2000)
+
+        
+        // Form will be reset when success modal is closed
         
       
       } else {
@@ -5329,15 +5372,21 @@ function updateEditStateUI(isEditing) {
 
 // Generate next invoice reference for drafts
 async function getNextInvoiceRef(sellerId, invoiceType) {
+  console.log('getNextInvoiceRef called with:', { sellerId, invoiceType });
+  
   const invoices = await dbGetAll(STORE_NAMES.invoices);
   const sellers = await dbGetAll(STORE_NAMES.sellers);
   const seller = sellers.find(s => s.ntn === sellerId);
   
-  if (!seller) return "";
+  console.log('Found seller:', seller);
+  
+  // if (!seller) return "";
   
   const prefix = invoiceType === "Sale Invoice" ? "SI" : "DN";
-  const existingRefs = invoices
-    .filter(inv => inv.sellerNTNCNIC === sellerId && inv.invoiceType === invoiceType)
+  const matchingInvoices = invoices.filter(inv => inv.sellerNTNCNIC === sellerId && inv.invoiceType === invoiceType);
+  console.log('Matching invoices found in DB:', matchingInvoices.map(inv => ({ id: inv.id, ref: inv.invoiceRefNo || inv.invoiceRef })));
+  
+  const existingRefs = matchingInvoices
     .map(inv => inv.invoiceRefNo || inv.invoiceRef || "")
     .filter(ref => ref.startsWith(prefix))
     .map(ref => {
@@ -5346,12 +5395,60 @@ async function getNextInvoiceRef(sellerId, invoiceType) {
     })
     .sort((a, b) => b - a);
   
+  console.log('Existing refs from invoices:', existingRefs);
+  
   const baseId = invoiceType === "Sale Invoice" ? 
     (typeof seller.lastSaleInvoiceId === 'string' ? parseInt(seller.lastSaleInvoiceId, 10) : seller.lastSaleInvoiceId) : 
     (typeof seller.lastDebitNoteId === 'string' ? parseInt(seller.lastDebitNoteId, 10) : seller.lastDebitNoteId);
     
+  console.log('Seller stored ID:', baseId);
+  
   const nextId = Math.max(existingRefs[0] || 0, baseId || 0) + 1;
-  return `${prefix}-${nextId.toString().padStart(4, "0")}`;
+  console.log('Calculated next ID:', nextId);
+  const refNumber = `${prefix}-${nextId.toString().padStart(4, "0")}`;
+  
+  // Update seller's last invoice ID
+  if (invoiceType === "Sale Invoice") {
+    seller.lastSaleInvoiceId = nextId;
+  } else {
+    seller.lastDebitNoteId = nextId;
+  }
+  await dbPut(STORE_NAMES.sellers, seller);
+  
+  console.log('Generated next ref number:', refNumber);
+  
+  return refNumber;
+}
+
+// Duplicate invoice function
+window.duplicateInvoice = async (invoiceId) => {
+  try {
+    const invoice = await dbGet(STORE_NAMES.invoices, String(invoiceId))
+    if (!invoice) {
+      showToast('error', 'Invoice Not Found', 'No invoice found for duplication.')
+      return
+    }
+    
+    // Switch to create invoice tab
+    switchToCreateInvoiceTab()
+    
+    // Load invoice data but generate new reference
+    await loadInvoiceIntoForm(invoice)
+    
+    // Clear editing state to make it a new invoice
+    currentEditingInvoice = null
+    originalInvoiceState = null
+    
+    // Generate new reference number
+    await updateInvoiceReference()
+    
+    // Update UI
+    updateEditStateUI(false)
+    
+    showToast('success', 'Invoice Duplicated', 'Invoice has been duplicated for editing.')
+  } catch (e) {
+    showToast('error', 'Duplicate Failed', e.message || e)
+  }
 }
 
 // Delete invoice function
@@ -5610,8 +5707,8 @@ async function populateInvoicesTable() {
   } else {
     // Default sort by date (newest first)
     filteredInvoices.sort((a, b) => {
-      const dateA = new Date(a.invoiceDate || a.dated || 0);
-      const dateB = new Date(b.invoiceDate || b.dated || 0);
+      const dateA = new Date( a.dated || a.invoiceDate || 0);
+      const dateB = new Date( b.dated || b.invoiceDate || 0);
       return dateB - dateA;
     });
   }
@@ -5775,46 +5872,6 @@ window.duplicateInvoice = async (invoiceId) => {
   }
 };
 
-
-// Reset form to initial app state
-async function resetToInitialState() {
-  if (initialAppState) {
-    // Reset edit state
-    currentEditingInvoice = null
-    originalInvoiceState = null
-    
-    // Reset form fields
-    items = []
-    renderItems()
-    updateInvoiceTotal()
-    
-    // Restore initial selections
-    DOMElements.sellerSelect.value = initialAppState.selectedSeller || ''
-    DOMElements.buyerSelect.value = initialAppState.selectedBuyer || ''
-    DOMElements.invoiceType.value = initialAppState.invoiceType || 'Sale Invoice'
-    DOMElements.invoiceDate.value = new Date().toISOString().split("T")[0]
-    DOMElements.currency.value = initialAppState.currency || 'PKR'
-    DOMElements.invoiceRef.value = ''
-    
-    // Repopulate dependent fields
-    if (DOMElements.sellerSelect.value) {
-      await populateInvoiceScenarios(DOMElements.sellerSelect.value)
-    }
-    if (DOMElements.buyerSelect.value) {
-      DOMElements.buyerSelect.dispatchEvent(new Event('change'))
-    }
-    
-    await updateInvoiceReference()
-    DOMElements.invoiceResult.style.display = "none"
-    
-    // Update UI to show new invoice state
-    updateEditStateUI(false);
-    
-    // Add default item
-    await addNewItem()
-  }
-}
-
 // Initialize application
 // Initialize invoice filters
 function initInvoiceFilters() {
@@ -5861,43 +5918,6 @@ function initInvoiceFilters() {
 
 }
 
-// Debounce function for search input
-function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}
-
-// Format date for API with specific format
-function formatDateForAPI(dateString, format) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  
-  if (format === 'DD-MMM-YYYY') {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  }
-  
-  if (format === 'YYYY-MM-DD') {
-    return date.toISOString().split('T')[0];
-  }
-  
-  return dateString;
-}
-
-// Get current date in specified format
-function getCurrentDate(format = 'YYYY-MM-DD') {
-  const today = new Date();
-  return formatDateForAPI(today.toISOString(), format);
-}
 
 async function initApp() {
 
@@ -6030,6 +6050,7 @@ async function initApp() {
     selectedBuyer: buyers.length > 0 ? buyers[0].ntn : '',
     invoiceType: 'Sale Invoice',
     currency: 'PKR'
+
   };
 
   // Show success message when initialization is complete
