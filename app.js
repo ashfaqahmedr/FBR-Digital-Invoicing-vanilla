@@ -2427,6 +2427,7 @@ function createPaginationControls(containerId, currentPage, totalPages, onPageCh
   // Previous button
   const prevBtn = document.createElement('button');
   prevBtn.className = `btn btn-sm ${currentPage === 1 ? 'btn-secondary' : 'btn-primary'}`;
+  prevBtn.style.marginRight = '5px';
   prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
   prevBtn.disabled = currentPage === 1;
   prevBtn.onclick = () => onPageChange(currentPage - 1);
@@ -2439,6 +2440,7 @@ function createPaginationControls(containerId, currentPage, totalPages, onPageCh
   for (let i = startPage; i <= endPage; i++) {
     const pageBtn = document.createElement('button');
     pageBtn.className = `btn btn-sm ${i === currentPage ? 'btn-primary' : 'btn-outline-primary'}`;
+    pageBtn.style.marginRight = '5px';
     pageBtn.textContent = i;
     pageBtn.onclick = () => onPageChange(i);
     container.appendChild(pageBtn);
@@ -2483,7 +2485,10 @@ async function populateProductsTable() {
       </td>
     `;
     tbody.appendChild(row);
-    document.getElementById('productsPaginationInfo').textContent = 'Showing 0 of 0 items';
+    const paginationInfo = document.getElementById('productsPaginationInfo');
+    if (paginationInfo) {
+      paginationInfo.textContent = 'Showing 0-0 of 0 items';
+    }
     return;
   }
   
@@ -2522,8 +2527,11 @@ async function populateProductsTable() {
   // Update pagination info and controls
   const paginationInfo = document.getElementById('productsPaginationInfo');
   if (paginationInfo) {
-    paginationInfo.textContent = 
-      `Showing ${paginatedData.startIndex || 0}-${paginatedData.endIndex || 0} of ${paginatedData.totalItems || 0} items`;
+    if (perPage === 'all') {
+      paginationInfo.textContent = `Showing 1-${filteredProducts.length} of ${filteredProducts.length} items`;
+    } else {
+      paginationInfo.textContent = `Showing ${paginatedData.startIndex}-${paginatedData.endIndex} of ${paginatedData.totalItems} items`;
+    }
   }
   
   createPaginationControls('productsPaginationControls', paginatedData.currentPage, paginatedData.totalPages, (page) => {
@@ -2810,7 +2818,7 @@ async function populateSellersTable() {
       </td>
     `;
     tbody.appendChild(row);
-    document.getElementById('sellersPaginationInfo').textContent = 'Showing 0 of 0 items';
+    document.getElementById('sellersPaginationInfo').textContent = 'Showing 0-0 of 0 items';
     return;
   }
 
@@ -2833,8 +2841,11 @@ async function populateSellersTable() {
   // Update pagination info and controls
   const paginationInfo = document.getElementById('sellersPaginationInfo');
   if (paginationInfo) {
-    paginationInfo.textContent = 
-      `Showing ${paginatedData.startIndex || 0}-${paginatedData.endIndex || 0} of ${paginatedData.totalItems || 0} items`;
+    if (perPage === 'all') {
+      paginationInfo.textContent = `Showing 1-${filteredSellers.length} of ${filteredSellers.length} items`;
+    } else {
+      paginationInfo.textContent = `Showing ${paginatedData.startIndex}-${paginatedData.endIndex} of ${paginatedData.totalItems} items`;
+    }
   }
   
   createPaginationControls('sellersPaginationControls', paginatedData.currentPage, paginatedData.totalPages, (page) => {
@@ -2987,7 +2998,7 @@ async function populateBuyersTable() {
       </td>
     `;
     tbody.appendChild(row);
-    document.getElementById('buyersPaginationInfo').textContent = 'Showing 0 of 0 items';
+    document.getElementById('buyersPaginationInfo').textContent = 'Showing 0-0 of 0 items';
     return;
   }
 
@@ -3010,8 +3021,11 @@ async function populateBuyersTable() {
   // Update pagination info and controls
   const paginationInfo = document.getElementById('buyersPaginationInfo');
   if (paginationInfo) {
-    paginationInfo.textContent = 
-      `Showing ${paginatedData.startIndex || 0}-${paginatedData.endIndex || 0} of ${paginatedData.totalItems || 0} items`;
+    if (perPage === 'all') {
+      paginationInfo.textContent = `Showing 1-${filteredBuyers.length} of ${filteredBuyers.length} items`;
+    } else {
+      paginationInfo.textContent = `Showing ${paginatedData.startIndex}-${paginatedData.endIndex} of ${paginatedData.totalItems} items`;
+    }
   }
   
   createPaginationControls('buyersPaginationControls', paginatedData.currentPage, paginatedData.totalPages, (page) => {
@@ -5532,13 +5546,13 @@ async function populateInvoicesTable() {
   const perPage = document.getElementById('invoicesPerPage')?.value || '20';
 
   // Apply filters
-  invoices = searchInvoices(invoices, searchTerm);
-  invoices = filterByStatus(invoices, statusFilter);
-  invoices = filterByDateRange(invoices, dateFilter, dateFrom, dateTo);
+  let filteredInvoices = searchInvoices(invoices, searchTerm);
+  filteredInvoices = filterByStatus(filteredInvoices, statusFilter);
+  filteredInvoices = filterByDateRange(filteredInvoices, dateFilter, dateFrom, dateTo);
 
   // Apply sorting
   if (invoiceSortField) {
-    invoices.sort((a, b) => {
+    filteredInvoices.sort((a, b) => {
       let aVal, bVal;
       
       switch (invoiceSortField) {
@@ -5595,7 +5609,7 @@ async function populateInvoicesTable() {
     });
   } else {
     // Default sort by date (newest first)
-    invoices.sort((a, b) => {
+    filteredInvoices.sort((a, b) => {
       const dateA = new Date(a.invoiceDate || a.dated || 0);
       const dateB = new Date(b.invoiceDate || b.dated || 0);
       return dateB - dateA;
@@ -5603,17 +5617,20 @@ async function populateInvoicesTable() {
   }
 
   // Apply pagination
-  const paginatedData = paginate(invoices, currentInvoicesPage, perPage);
+  const paginatedData = paginate(filteredInvoices, currentInvoicesPage, perPage);
   
   tbody.innerHTML = "";
-  if (!invoices || invoices.length === 0) {
+  if (!filteredInvoices || filteredInvoices.length === 0) {
     const row = document.createElement("tr");
     row.innerHTML = `<td colspan="8" style="text-align:center;color:#888;">
       No Invoice Data found in Record
       <button class="btn btn-primary" onclick="switchToCreateInvoiceTab()">Add Invoice</button>
     </td>`;
     tbody.appendChild(row);
-    document.getElementById('invoicesPaginationInfo').textContent = 'Showing 0 of 0 items';
+    // const paginationInfo = document.getElementById('invoicesPaginationInfo');
+    // if (paginationInfo) {
+    //   paginationInfo.textContent = 'Showing 0-0 of 0 items';
+    // }
     return;
   }
 
@@ -5684,11 +5701,17 @@ async function populateInvoicesTable() {
     tbody.appendChild(row);
   });
   
+  
   // Update pagination info and controls
   const paginationInfo = document.getElementById('invoicesPaginationInfo');
+
+
   if (paginationInfo) {
-    paginationInfo.textContent = 
-      `Showing ${paginatedData.startIndex || 0}-${paginatedData.endIndex || 0} of ${paginatedData.totalItems || 0} items`;
+    if (perPage === 'all') {
+      paginationInfo.textContent = `Showing 1-${filteredInvoices.length} of ${filteredInvoices.length} items`;
+    } else {
+      paginationInfo.textContent = `Showing ${paginatedData.startIndex}-${paginatedData.endIndex} of ${paginatedData.totalItems} items`;
+    }
   }
   
   createPaginationControls('invoicesPaginationControls', paginatedData.currentPage, paginatedData.totalPages, (page) => {
@@ -5801,7 +5824,6 @@ function initInvoiceFilters() {
   const customDateRange = document.getElementById('customDateRange');
   const applyDateFilter = document.getElementById('applyDateFilter');
    const perPageFilter = document.getElementById('invoicesPerPage');
-
 
 
   // Handle search input
