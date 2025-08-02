@@ -81,14 +81,14 @@ https://cdn.jsdelivr.net/npm/dompurify@3.2/dist/purify.min.js
         <i class="fas fa-file-invoice-dollar"></i> Manage Invoices
       </button>
     
-      <button class="nav-btn" data-tab="sellers-tab">
-        <i class="fas fa-user-tie"></i> Manage Sellers
-      </button>
       <button class="nav-btn" data-tab="buyers-tab">
         <i class="fas fa-users"></i> Manage Buyers
       </button>
       <button class="nav-btn" data-tab="products-tab">
         <i class="fas fa-box"></i> Manage Products
+      </button>
+      <button class="nav-btn" data-tab="sellers-tab">
+        <i class="fas fa-user-tie"></i> Manage Sellers
       </button>
       <button class="nav-btn" data-tab="api-tab">
         <i class="fas fa-plug"></i> Test APIs
@@ -742,7 +742,7 @@ https://cdn.jsdelivr.net/npm/dompurify@3.2/dist/purify.min.js
               <thead>
                 <tr>
                   <th style="cursor: pointer;" onclick="sortSellers('ntn')">
-                    NTN <i class="fas fa-sort" id="sort-ntn"></i>
+                    NTN/CNIC  <i class="fas fa-sort" id="sort-ntn"></i>
                   </th>
                   <th style="cursor: pointer;" onclick="sortSellers('businessName')">
                     Business Name <i class="fas fa-sort" id="sort-businessName"></i>
@@ -845,17 +845,17 @@ https://cdn.jsdelivr.net/npm/dompurify@3.2/dist/purify.min.js
             <table class="items-table">
               <thead>
                 <tr>
-                  <th style="cursor: pointer;" onclick="sortBuyers('businessName')">
-                    Business Name <i class="fas fa-sort" id="sort-buyer-businessName"></i>
-                  </th>
                   <th style="cursor: pointer;" onclick="sortBuyers('ntn')">
                     NTN/CNIC <i class="fas fa-sort" id="sort-buyer-ntn"></i>
                   </th>
-                  <th style="cursor: pointer;" onclick="sortBuyers('registrationType')">
-                    Registration Type <i class="fas fa-sort" id="sort-buyer-registrationType"></i>
+                  <th style="cursor: pointer;" onclick="sortBuyers('businessName')">
+                    Business Name <i class="fas fa-sort" id="sort-buyer-businessName"></i>
                   </th>
                   <th style="cursor: pointer;" onclick="sortBuyers('province')">
                     Province <i class="fas fa-sort" id="sort-buyer-province"></i>
+                  </th>
+                  <th style="cursor: pointer;" onclick="sortBuyers('registrationType')">
+                    Registration Type <i class="fas fa-sort" id="sort-buyer-registrationType"></i>
                   </th>
                   <th style="cursor: pointer;" onclick="sortBuyers('registrationStatus')">
                     Status <i class="fas fa-sort" id="sort-buyer-registrationStatus"></i>

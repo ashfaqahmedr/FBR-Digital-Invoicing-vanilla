@@ -3075,10 +3075,10 @@ async function populateBuyersTable() {
   paginatedData.data.forEach((buyer) => {
     const row = document.createElement("tr");
     row.innerHTML = `
+    <td>${buyer.ntn}</td>
       <td>${buyer.businessName}</td>
-      <td>${buyer.ntn}</td>
-      <td>${buyer.registrationType}</td>
       <td>${buyer.province}</td>
+      <td>${buyer.registrationType}</td>
       <td>${buyer.registrationStatus || "Unknown"}</td>
       <td class="action-cell">
         <button class="btn btn-sm" onclick="editBuyer('${buyer.ntn}')"><i class="fas fa-edit"></i></button>
