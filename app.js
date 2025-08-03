@@ -1775,7 +1775,7 @@ async function fetchTaxRateOptions(serviceTypeId, buyerProvinceId, date) {
     const province = provinces.find((p) => p.stateProvinceDesc === buyerProvinceId)
     const originationSupplier = province ? province.stateProvinceCode : 1
 
-    const url = `${API_URLS.saleTypeToRate}?date=${date}&transTypeId=${serviceTypeId}&originationSupplier=${originationSupplier}`
+    const url = `${API_URLS.saleTypeToRate}?date=${formatDateForAPI(date, "DD-MMM-YYYY")}&transTypeId=${serviceTypeId}&originationSupplier=${originationSupplier}`
     const response = await fetchWithAuth(url)
 
     if (Array.isArray(response) && response.length > 0) {
@@ -2245,12 +2245,13 @@ async function loadProductSroSchedules(rateId) {
   try {
     showProductModalLoader(true);
     const date = document.getElementById('productDate').value;
+    const formattedDate = formatDateForAPI(date, 'DD-MMM-YYYY');
     const originProvince = document.getElementById('productOriginProvince').value;
     
     const province = provinces.find(p => p.stateProvinceDesc === originProvince);
     const provinceCode = province ? province.stateProvinceCode : 1;
     
-    const sroScheduleOptions = await fetchSroSchedules(rateId, date, provinceCode);
+    const sroScheduleOptions = await fetchSroSchedules(rateId, formattedDate, provinceCode);
     
     if (sroScheduleOptions && sroScheduleOptions.length > 0) {
       const scheduleOptions = sroScheduleOptions.map(sro => ({ 
@@ -2370,7 +2371,7 @@ async function addProductToInvoice(product) {
   };
   
   const date = DOMElements.invoiceDate.value || new Date().toISOString().split('T')[0];
-  const formattedDate = formatDateForAPI(date, 'YYYY-MM-DD');
+  const formattedDate = formatDateForAPI(date, 'DD-MMM-YYYY');
   
   item.taxRateOptions = await fetchTaxRateOptions(item.serviceTypeId, buyer.province, formattedDate);
   
@@ -2382,7 +2383,7 @@ async function addProductToInvoice(product) {
     const province = provinces.find(p => p.stateProvinceDesc === buyer.province);
     const provinceCode = province ? province.stateProvinceCode : 1;
     
-    item.sroScheduleOptions = await fetchSroSchedules(item.rateId, date, provinceCode);
+    item.sroScheduleOptions = await fetchSroSchedules(item.rateId, formattedDate, provinceCode);
     
     if (item.sroScheduleOptions.length > 0) {
       item.sroSchedule = item.sroScheduleOptions[0].srO_ID;
@@ -3222,10 +3223,8 @@ async function updateItem(itemId, field, value) {
     
     if (selectedBuyer) {
       const date = DOMElements.invoiceDate.value || new Date().toISOString().split("T")[0]
-      const formattedDate = formatDateForAPI(date, "DD-MMM-YYYY")
 
-
-      item.taxRateOptions = await fetchTaxRateOptions(item.serviceTypeId, selectedBuyer.province, formattedDate)
+      item.taxRateOptions = await fetchTaxRateOptions(item.serviceTypeId, selectedBuyer.province, date)
       item.taxRate = item.taxRateOptions.length > 0 ? item.taxRateOptions[0].ratE_VALUE : 0
       item.rateId = item.taxRateOptions.length > 0 ? item.taxRateOptions[0].ratE_ID : null
       item.sroScheduleOptions = []
@@ -4144,7 +4143,7 @@ async function generateInvoicePDF(response, isDummy = false, isPreview = false) 
     doc.setFont(undefined, "bold");
     doc.text("FBR Invoice No.:", rightX, rightY);
     doc.setFont(undefined, "normal");
-    rightY += wrapText(invoiceNumber, rightX + 38, rightY, 60);
+    rightY += wrapText(invoiceNumber, rightX + 38, rightY, 45);
 
     // Seller/Buyer Info
     y = Math.max(leftY, rightY) + 10;
