@@ -17,6 +17,7 @@ let invoicePayload = null
 let currentEditingInvoice = null
 let originalInvoiceState = null
 let initialAppState = null
+let grandTotal = 0
 
 
 // === IndexedDB Utility ===
@@ -1255,6 +1256,24 @@ function formatDateForAPI(dateString, format = 'DD-MMM-YYYY') {
   }
 }
 
+// Format date for display in DD-MMM-YYYY HH:MM AM/PM format
+function formatDateForDisplay(dateString) {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return dateString; // Return original if invalid date
+  
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = date.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+  const year = date.getFullYear();
+  const hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12;
+  
+  return `${day}-${month}-${year} ${String(displayHours).padStart(2, '0')}:${minutes} ${ampm}`;
+}
+
 
 async function getSelectedSeller() {
   const sellerKey = DOMElements.sellerSelect.value
@@ -1349,6 +1368,9 @@ async function handleSuccessfulSubmission(response, seller, invoicePayload) {
     // Enrich the response with additional data
     const enrichedResponse = enrichResponseWithInvoiceData(response, invoicePayload);
     
+    // Calculate total amount from line items
+    const totalAmount = calculateTotalFromLineItems(invoicePayload.items);
+    
     // Create or update the invoice in the database
     const invoiceData = {
       ...invoicePayload,
@@ -1357,6 +1379,7 @@ async function handleSuccessfulSubmission(response, seller, invoicePayload) {
       fbrInvoiceNumber: response.InvoiceNumber || response.invoiceNumber,
       dated: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      totalAmount: totalAmount,
       validationResponse: response,
       invoicePayload: invoicePayload
     };
@@ -3502,7 +3525,7 @@ function updateInvoiceTotal() {
     totalTax += salesTaxApplicable;
   });
   
-  const grandTotal = subTotal + totalTax;
+   grandTotal = subTotal + totalTax;
   
   // Update line item count
   const lineItemCountElement = document.getElementById("lineItemCount");
@@ -4063,12 +4086,11 @@ async function generateInvoicePDF(response, isDummy = false, isPreview = false) 
   // Get data
   const seller = response?.seller || await getSelectedSeller();
   const buyer = response?.buyer || await getSelectedBuyer();
-  const invoiceDate = response?.dated || DOMElements.invoiceDate.value;
-  const invoiceRef = response?.invoiceRefNo || DOMElements.invoiceRef.value;
+  const invoiceDate = formatDateForDisplay(response?.dated || response?.invoicePayload?.invoiceDate || DOMElements.invoiceDate.value);
+  const invoiceRef = response?.invoiceRefNo || response?.invoicePayload?.invoiceRefNo || DOMElements.invoiceRef.value;
   const currency = response?.currency || DOMElements.currency.value;
-  const invoiceNumber = response?.invoiceNumber || "N/A";
-  const itemsList = response?.items || items;
-
+  const invoiceNumber = response?.invoiceNumber ||  "N/A";
+  const itemsList = response?.items || response?.invoicePayload?.items || items;
 
 
   // Function to wrap text
@@ -4083,10 +4105,13 @@ async function generateInvoicePDF(response, isDummy = false, isPreview = false) 
     let y = layoutConfig.margin.top + 10;
     const x = layoutConfig.margin.left;
 
-    // Header
+    // Header - Get sales type from invoice data
+    const invoiceType = response?.invoiceType || response?.invoicePayload?.invoiceType || DOMElements.invoiceType?.value || 'Sale Invoice';
+    const salesType = invoiceType.replace(' Invoice', '');
+    
     doc.setFontSize(20);
     doc.setFont(undefined, "bold");
-    const headerText = "FBR Digital Invoice";
+    const headerText = `${salesType} Invoice`;
     const headerWidth = doc.getTextWidth(headerText);
     const wrappedHeaderHeight = wrapText(headerText, layoutConfig.pageWidth / 2 - headerWidth / 2, y, layoutConfig.pageWidth - 20);
     y += wrappedHeaderHeight + 5;
@@ -4098,7 +4123,7 @@ async function generateInvoicePDF(response, isDummy = false, isPreview = false) 
     doc.addImage(logo, "PNG", x, layoutConfig.margin.top, 35, 20);
 
     // QR code at top right
-    const qrText = invoiceNumber;
+    const qrText = invoiceNumber ;
     try {
       const qrUrl = await QRCode.toDataURL(qrText, { errorCorrectionLevel: 'H' });
       const qrWidth = 35;
@@ -4235,11 +4260,11 @@ async function generateInvoicePDF(response, isDummy = false, isPreview = false) 
       item.hsCode || item.hsCode,
       item.productDescription || item.description,
       String(item.quantity),
-      `${currency} ${(item.unitPrice || parseFloat(item.rate) || 0).toFixed(2)}`,
-      `${currency} ${amount.toFixed(2)}`,
+      `${(item.unitPrice || parseFloat(item.rate) || 0).toFixed(2)}`,
+      `${amount.toFixed(2)}`,
       `${taxRateVal.toFixed(2)}%`,
-      `${currency} ${taxAmt.toFixed(2)}`,
-      `${currency} ${total.toFixed(2)}`
+      `${taxAmt.toFixed(2)}`,
+      `${total.toFixed(2)}`
       ];
 
       let cellX = tableX;
@@ -4328,9 +4353,9 @@ async function generateInvoicePDF(response, isDummy = false, isPreview = false) 
     doc.text("Total Amount:", summaryX + 2, summaryYBox + 2 * rowH + rowH / 2 + 1.5);
 
     doc.setFont(undefined, "normal");
-    doc.text(`${currency} ${gross.toFixed(2)}`, summaryX + labelWidth + 2, summaryYBox + rowH / 2 + 1.5);
-    doc.text(`${currency} ${tax.toFixed(2)}`, summaryX + labelWidth + 2, summaryYBox + rowH + rowH / 2 + 1.5);
-    doc.text(`${currency} ${total.toFixed(2)}`, summaryX + labelWidth + 2, summaryYBox + 2 * rowH + rowH / 2 + 1.5);
+    doc.text(`${gross.toFixed(2)}`, summaryX + labelWidth + 2, summaryYBox + rowH / 2 + 1.5);
+    doc.text(`${tax.toFixed(2)}`, summaryX + labelWidth + 2, summaryYBox + rowH + rowH / 2 + 1.5);
+    doc.text(`${total.toFixed(2)}`, summaryX + labelWidth + 2, summaryYBox + 2 * rowH + rowH / 2 + 1.5);
 
     // Centered footer text
     doc.setFont(undefined, "italic");
@@ -4356,8 +4381,13 @@ async function generateInvoicePDF(response, isDummy = false, isPreview = false) 
 
     invoicePreview.dataset.isDummy = isDummy;
     const qrCanvas = document.createElement("canvas");
-    await QRCode.toCanvas(qrCanvas, invoiceNumber, { width: 100, errorCorrectionLevel: "H" });
+    const qrText = (!invoiceNumber || invoiceNumber ==="N/A") ? invoiceRef : invoiceNumber ;
+    await QRCode.toCanvas(qrCanvas, qrText, { width: 100, errorCorrectionLevel: "H" });
     const qrUrl = qrCanvas.toDataURL("image/png");
+
+    // Get sales type for title
+    const invoiceType = response?.invoiceType || response?.invoicePayload?.invoiceType || DOMElements.invoiceType?.value || 'Sale Invoice';
+    const salesType = invoiceType.replace(' Invoice', '');
 
     const headers = ["Sr. No.", "HS Code", "Description", "Qty", "Rate", "Amount", "Tax %", "Tax Amt", "Total"];
     // Inside generateInvoicePDF, replace the summary calculation in the preview section
@@ -4409,12 +4439,12 @@ async function generateInvoicePDF(response, isDummy = false, isPreview = false) 
       <img src="FBRDigitalInvoiceLogo.png" class="logo" alt="FBR Logo">
       <img src="${qrUrl}" class="qr" alt="QR Code">
       </div>
-      <div class="header">FBR Digital Invoice</div>
+      <div class="header">${salesType} Invoice</div>
       <div class="info-container">
       <div class="info-left">
         <p><strong>Invoice Date:</strong> ${invoiceDate}</p>
         <p><strong>Payment Mode:</strong> Cash</p>
-        <p><strong>Currency:</strong> ${currency}</p>
+        <p><strong>Currency:</strong> ${currency} (All amounts in ${currency})</p>
       </div>
       <div class="info-right">
         <p><strong>Invoice Ref No:</strong> ${invoiceRef}</p>
@@ -4452,19 +4482,19 @@ async function generateInvoicePDF(response, isDummy = false, isPreview = false) 
                 <td>${item.hsCode || ''}</td>
                 <td class="description">${item.productDescription || item.description || ''}</td>
                 <td>${item.quantity}</td>
-                <td>${currency} ${(item.unitPrice || parseFloat(item.rate) || 0).toFixed(2)}</td>
-                <td>${currency} ${amount.toFixed(2)}</td>
+                <td>${(item.unitPrice || parseFloat(item.rate) || 0).toFixed(2)}</td>
+                <td>${amount.toFixed(2)}</td>
                 <td>${taxRateVal.toFixed(2)}%</td>
-                <td>${currency} ${taxAmt.toFixed(2)}</td>
-                <td>${currency} ${total.toFixed(2)}</td>
+                <td>${taxAmt.toFixed(2)}</td>
+                <td>${total.toFixed(2)}</td>
               </tr>`;
           }).join('')}
         </tbody>
       </table>
       <div class="summary">
-      <p><strong>Gross Amount:</strong> ${currency} ${gross?.toFixed(2)}</p>
-      <p><strong>Sales Tax:</strong> ${currency} ${tax?.toFixed(2)}</p>
-      <p><strong>Total Amount:</strong> ${currency} ${total?.toFixed(2)}</p>
+      <p><strong>Gross Amount:</strong> ${gross?.toFixed(2)}</p>
+      <p><strong>Sales Tax:</strong> ${tax?.toFixed(2)}</p>
+      <p><strong>Total Amount:</strong> ${total?.toFixed(2)}</p>
       </div>
     `;
 
@@ -4826,7 +4856,7 @@ function initFormActions() {
           buyerNTNCNIC: buyer.ntn,
           buyerBusinessName: buyer.businessName,
           items: items,
-          totalAmount: items.reduce((sum, i) => sum + (i.quantity * i.unitPrice) + ((i.quantity * i.unitPrice) * (i.taxRate / 100)), 0),
+          totalAmount: calculateTotalFromLineItems(items),
           createdAt: currentEditingInvoice ? currentEditingInvoice.createdAt : new Date().toISOString(),
           dated: new Date().toISOString(),
           lastModified: new Date().toISOString(),
@@ -5057,10 +5087,8 @@ const submitURL = isProduction ? API_URLS.submit.production : API_URLS.submit.sa
           };
         }
         
-        // Calculate total amount from line items
-        const totalAmount = invoicePayload.items.reduce((sum, item) => {
-          return sum + (parseFloat(item.totalValue) || 0);
-        }, 0);
+        // Calculate total amount from line items using the new function
+        const totalAmount = calculateTotalFromLineItems(invoicePayload.items);
 
         const updatedInvoice = {
           ...invoice,
@@ -5450,6 +5478,49 @@ window.duplicateInvoice = async (invoiceId) => {
   }
 }
 
+// Duplicate invoice function
+window.duplicateInvoice = async (invoiceId) => {
+  try {
+    const invoice = await dbGet(STORE_NAMES.invoices, String(invoiceId));
+    if (!invoice) {
+      showToast('error', 'Error', 'Invoice not found');
+      return;
+    }
+    
+    // Create a deep copy of the invoice
+    const newInvoice = JSON.parse(JSON.stringify(invoice));
+    
+    // Reset fields for the new invoice
+    delete newInvoice.id;
+    newInvoice.status = 'draft';
+    newInvoice.createdAt = new Date().toISOString();
+    newInvoice.updatedAt = new Date().toISOString();
+    
+    // Generate a new reference number
+    const seller = await dbGet(STORE_NAMES.sellers, newInvoice.sellerNTNCNIC);
+    if (seller) {
+      newInvoice.invoiceRefNo = await getNextInvoiceRef(seller.ntn, newInvoice.invoiceType);
+      newInvoice.invoiceRef = newInvoice.invoiceRefNo; // For backward compatibility
+    }
+    
+    // Save the new invoice
+    await dbSet(STORE_NAMES.invoices, newInvoice);
+    
+    // Update the UI
+    await populateInvoicesTable();
+    
+    // Switch to the create invoice tab with the duplicated invoice
+    switchToCreateInvoiceTab();
+    await loadInvoiceIntoForm(newInvoice);
+    
+    showToast('success', 'Invoice Duplicated', 'A new draft has been created from the selected invoice');
+  } catch (error) {
+    console.error('Error duplicating invoice:', error);
+    showToast('error', 'Error', 'Failed to duplicate invoice');
+  }
+};
+
+
 // Delete invoice function
 window.deleteInvoice = async (invoiceId) => {
   try {
@@ -5628,6 +5699,17 @@ function sortInvoices(field) {
 
 window.sortInvoices = sortInvoices;
 
+// Function to calculate total amount from line items
+function calculateTotalFromLineItems(items) {
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return 0;
+  }
+  
+  return items.reduce((total, item) => {
+    return total + (parseFloat(item.totalValues) || 0);
+  }, 0);
+}
+
 // Populate invoices table
 async function populateInvoicesTable() {
   let invoices = await dbGetAll(STORE_NAMES.invoices);
@@ -5762,19 +5844,26 @@ async function populateInvoicesTable() {
   }
 
   paginatedData.data.forEach((invoice) => {
-    const isDraft = invoice.status === 'draft';
     const isSubmitted = invoice?.invoiceNumber;
     const statusText = isSubmitted ? 'Submitted' : (invoice.status || 'Draft');
+    const isDraft = invoice?.status === 'Draft' || statusText === 'draft';
+    
+    // Calculate total amount if it's 0 or missing
+    let totalAmount = parseFloat(invoice?.totalAmount) || 0;
+    if (totalAmount === 0) {
+      const items = invoice?.items || invoice?.invoicePayload?.items || [];
+      totalAmount = calculateTotalFromLineItems(items);
+    }
     
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${invoice?.id || "N/A"}</td>
       <td>${invoice?.invoiceRefNo || invoice?.invoicePayload?.invoiceRefNo || "N/A"}</td>
-      <td>${formatDate(invoice?.invoiceDate || invoice?.dated) || "N/A"}</td>
+      <td>${formatDateForDisplay(invoice?.dated || invoice?.invoiceDate) || "N/A"}</td>
       <td>${invoice?.invoiceType || invoice?.invoicePayload?.invoiceType || "N/A"}</td>
-      <td>${invoice?.currency || 'PKR'} ${invoice?.totalAmount ? parseFloat(invoice?.totalAmount).toFixed(2) : "0.00"}</td>
+      <td>${totalAmount.toFixed(2)}</td>
       <td><span class="status-badge ${isSubmitted ? 'status-submitted' : 'status-draft'}">${statusText}</span></td>
-      <td>${invoice?.invoiceNumber || invoice?.invoicePayload?.invoiceNumber || 'N/A'}</td>
+      <td>${invoice?.invoiceNumber || invoice?.invoicePayload?.invoiceNumber || ''}</td>
       <td class="action-cell" style="white-space: nowrap;">
         <button class="btn btn-sm btn-info" onclick="viewInvoice('${invoice?.id}')" title="View Invoice">
           <i class="fas fa-eye"></i>
@@ -5829,47 +5918,6 @@ function formatDate(dateString) {
   });
 }
 
-// Duplicate invoice function
-window.duplicateInvoice = async (invoiceId) => {
-  try {
-    const invoice = await dbGet(STORE_NAMES.invoices, String(invoiceId));
-    if (!invoice) {
-      showToast('error', 'Error', 'Invoice not found');
-      return;
-    }
-    
-    // Create a deep copy of the invoice
-    const newInvoice = JSON.parse(JSON.stringify(invoice));
-    
-    // Reset fields for the new invoice
-    delete newInvoice.id;
-    newInvoice.status = 'draft';
-    newInvoice.createdAt = new Date().toISOString();
-    newInvoice.updatedAt = new Date().toISOString();
-    
-    // Generate a new reference number
-    const seller = await dbGet(STORE_NAMES.sellers, newInvoice.sellerNTNCNIC);
-    if (seller) {
-      newInvoice.invoiceRefNo = await getNextInvoiceRef(seller.ntn, newInvoice.invoiceType);
-      newInvoice.invoiceRef = newInvoice.invoiceRefNo; // For backward compatibility
-    }
-    
-    // Save the new invoice
-    await dbSet(STORE_NAMES.invoices, newInvoice);
-    
-    // Update the UI
-    await populateInvoicesTable();
-    
-    // Switch to the create invoice tab with the duplicated invoice
-    switchToCreateInvoiceTab();
-    await loadInvoiceIntoForm(newInvoice);
-    
-    showToast('success', 'Invoice Duplicated', 'A new draft has been created from the selected invoice');
-  } catch (error) {
-    console.error('Error duplicating invoice:', error);
-    showToast('error', 'Error', 'Failed to duplicate invoice');
-  }
-};
 
 // Initialize application
 // Initialize invoice filters
@@ -5954,7 +6002,6 @@ async function initApp() {
     const postDateLabel = document.querySelector('label[for="post_date"]');
     if (postDateLabel) postDateLabel.innerHTML = `<i class="far fa-calendar-alt"></i> POST Date Format: YYYY-MM-DD (e.g. ${currentDateISO})`;
   }
-
 
 
   // Initialize invoice filtersfunc
