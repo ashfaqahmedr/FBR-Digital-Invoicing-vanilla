@@ -1330,18 +1330,26 @@ function buildInvoicePayload(seller, buyer) {
     items: items.map((item, idx) => ({
       itemSNo: (idx + 1).toString(),
       hsCode: item.hsCode,
-      description: item.description,
-      serviceTypeId: item.serviceTypeId,
+      productDescription: item.description,
+      rate: `${item.taxRate.toFixed(2)}%`,
+      uoM: item.uom,
       quantity: item.quantity,
-      uom: item.uom,
-      unitPrice: item.unitPrice,
-      taxRate: item.taxRate,
-      sroSchedule: item.sroSchedule,
-      sroItem: item.sroItem,
+      valueSalesExcludingST: item.quantity * item.unitPrice,
+      salesTaxApplicable: (item.quantity * item.unitPrice) * (item.taxRate / 100),
+      salesTaxWithheldAtSource: 0,
+      extraTax: item.extraTax || 0,
+      furtherTax: item.furtherTax || 0,
+      totalValues: (item.quantity * item.unitPrice) + ((item.quantity * item.unitPrice) * (item.taxRate / 100)) + (item.extraTax || 0) + (item.furtherTax || 0) - (item.discount || 0),
+      sroScheduleNo: "",
+      fedPayable: DOMElements.scenarioId.value === "SN018" ? 50 : 0,
+      discount: item.discount || 0,
+      saleType: item.saleType || "Services",
+      sroItemSerialNo: "",
+      fixedNotifiedValueOrRetailPrice: 0,
     })),
     grossAmount: items.reduce((sum, i) => sum + (i.quantity * i.unitPrice), 0),
     salesTax: items.reduce((sum, i) => sum + ((i.quantity * i.unitPrice) * (i.taxRate / 100)), 0),
-    totalAmount: items.reduce((sum, i) => sum + (i.quantity * i.unitPrice) + ((i.quantity * i.unitPrice) * (i.taxRate / 100)), 0),
+    totalAmount: items.reduce((sum, i) => sum + (i.quantity * i.unitPrice) + ((i.quantity * i.unitPrice) * (i.taxRate / 100)) + (i.extraTax || 0) + (i.furtherTax || 0) - (i.discount || 0), 0),
   };
 }
 
@@ -2383,6 +2391,11 @@ async function addProductToInvoice(product) {
     quantity: 1,
     unitPrice: product.saleRate,
     taxRate: product.taxRate,
+    extraTax: 0,
+    furtherTax: 0,
+    discount: 0,
+    fedPayable: 0,
+    salesTaxWithheldAtSource: 0,
     rateId: null,
     sroSchedule: '',
     sroItem: '',
@@ -3179,20 +3192,22 @@ function initBuyerFilters() {
 
 async function addNewItem() {
   const itemId = `item-${itemCounter++}`
-  const defaultHsCode = hsCodes.length > 0 ? hsCodes[0] : { hS_CODE: "5904.9000", description: "Textile" }
-  const defaultTransType =
-    transactionTypes.length > 0 ? transactionTypes[0] : { transactioN_TYPE_ID: 18, transactioN_DESC: "Services" }
 
   const item = {
     id: itemId,
-    hsCode: defaultHsCode.hS_CODE || "5904.9000",
-    description: defaultHsCode.description || "TEXTILE PRODUCTS",
-    serviceTypeId: defaultTransType.transactioN_TYPE_ID || 18,
-    saleType: defaultTransType.transactioN_DESC || "Services",
+    hsCode: "",
+    description: "",
+    serviceTypeId: "",
+    saleType: "",
     uom: "",
-    quantity: 100,
-    unitPrice: 9.98,
+    quantity: 1,
+    unitPrice: 0,
     taxRate: 0,
+    extraTax: 0,
+    furtherTax: 0,
+    discount: 0,
+    fedPayable: 0,
+    salesTaxWithheldAtSource: 0,
     rateId: null,
     sroSchedule: "",
     sroItem: "",
@@ -3201,12 +3216,6 @@ async function addNewItem() {
     sroScheduleOptions: [],
     sroItemOptions: [],
     annexureId: 3,
-  }
-
-  // Fetch initial UoM options
-  if (item.hsCode) {
-    item.uomOptions = await fetchUoMOptions(item.hsCode, 3)
-    item.uom = item.uomOptions.length > 0 ? item.uomOptions[0] : ""
   }
 
   items.push(item)
@@ -3283,7 +3292,7 @@ async function updateItem(itemId, field, value) {
     item.sroItem = item.sroItemOptions.length > 0 ? item.sroItemOptions[0].srO_ITEM_ID : ""
     showToast("success", "SRO Schedule Selected", "SRO Items loaded")
   } else {
-    item[field] = ["quantity", "unitPrice", "sroItem"].includes(field)
+    item[field] = ["quantity", "unitPrice", "extraTax", "furtherTax", "discount", "fedPayable", "salesTaxWithheldAtSource", "sroItem"].includes(field)
       ? field === "sroItem"
         ? value
         : Number.parseFloat(value)
@@ -3295,6 +3304,10 @@ async function updateItem(itemId, field, value) {
 }
 
 function removeItem(itemId) {
+  if (items.length <= 1) {
+    showToast("warning", "Cannot Remove", "At least one item must remain in the invoice")
+    return
+  }
   items = items.filter((item) => item.id !== itemId)
   renderItems()
   updateInvoiceTotal()
@@ -3302,12 +3315,26 @@ function removeItem(itemId) {
 
 function renderItems() {
   const container = DOMElements.itemsBody
+  container.style.backgroundColor = "#cee408ff"
   container.innerHTML = ""
 
   items.forEach((item, index) => {
     const value = item.quantity * item.unitPrice
     const salesTaxApplicable = (value * item.taxRate) / 100
-    const total = value + salesTaxApplicable
+    const extraTax = item.extraTax || 0
+    const furtherTax = item.furtherTax || 0
+    const discount = item.discount || 0
+    const total = value + salesTaxApplicable + extraTax + furtherTax - discount
+    const totalTax = salesTaxApplicable + extraTax + furtherTax
+
+    // Define color schemes for each item
+    const itemColors = [
+      { header1: "#1565c0", data1: "#e3f2fd", header2: "#0d47a1", data2: "#bbdefb" },
+      { header1: "#7b1fa2", data1: "#f3e5f5", header2: "#4a148c", data2: "#ce93d8" },
+      { header1: "#2e7d32", data1: "#e8f5e8", header2: "#1b5e20", data2: "#a5d6a7" },
+      { header1: "#e65100", data1: "#fff3e0", header2: "#bf360c", data2: "#ffcc80" }
+    ]
+    const colors = itemColors[index % itemColors.length]
 
     // Transaction Type dropdown
     const transactionTypeOptions = transactionTypes
@@ -3359,20 +3386,47 @@ function renderItems() {
             .join("")
         : '<option value="">Select SRO Schedule First</option>'
 
-    // Main row with basic item details
-    const mainRow = document.createElement("tr")
-    mainRow.className = "item-main-row"
-    mainRow.style.borderBottom = "1px solid #dee2e6"
-    mainRow.style.backgroundColor = index % 2 === 0 ? "#ffffff" : "#f8f9fa"
-    mainRow.innerHTML = `
-      <td style="width: 180px; position: relative;">
+    // First header row for this item
+    const firstHeaderRow = document.createElement("tr")
+    // firstHeaderRow.className = "item-first-header"
+    firstHeaderRow.style.backgroundColor = colors.header1
+    firstHeaderRow.style.fontWeight = "bold"
+    firstHeaderRow.style.border = "5px solid #075e1de5"
+    // firstHeaderRow.style.borderColor = "#ec0e0ee5"
+ 
+
+   const commonStyle = "width: 100%; padding: 2px; font-size: 0.90rem;"
+    firstHeaderRow.innerHTML = `
+      <th>Search Product</th>
+      <th>HS Code</th>
+      <th>Product Name</th>
+      <th>Service Type</th>
+      <th>Quantity</th>
+      <th>UoM</th>
+      <th>Unit Price</th>
+      <th>Tax Rate</th>
+      <th>Tax Amount</th>
+      <th>Total Value</th>
+      <th>Actions</th>
+    `
+    container.appendChild(firstHeaderRow)
+
+    // First data row with basic item details
+    const firstDataRow = document.createElement("tr")
+    // firstDataRow.style.borderColor = "#ec0e0ee5"
+    firstDataRow.style.border = "5px solid #ec0e0ee5"
+    // firstDataRow.className = "item-first-data"
+    firstDataRow.style.backgroundColor = colors.data1
+    firstDataRow.innerHTML = `
+      <td style="width: 120px; position: relative;">
         <input type="text" 
                class="product-search-input"
-               placeholder="Search Product..."
+               placeholder="Search..."
                onfocus="showProductSuggestions('${item.id}')"
                onkeyup="debounceProductSearch('${item.id}', this.value)"
-               style="width: 100%; padding: 6px; font-size: 0.85rem;">
-        <div id="productSuggestions-${item.id}" class="product-suggestions" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; background: white; border: 1px solid #ddd; max-height: 200px; overflow-y: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.2);"></div>
+               style="${commonStyle}">
+        <div id="productSuggestions-${item.id}" class="product-suggestions" 
+        style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; background: white; border: 1px solid #ddd; max-height: 300px; overflow-y: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.2); width: 250px;"></div>
       </td>
       <td style="width: 120px; position: relative;">
         <input type="text" 
@@ -3381,87 +3435,123 @@ function renderItems() {
                placeholder="Search HS Code..."
                title="${item.description}"
                onkeyup="debounceHSCodeSearch('${item.id}', this.value)"
-               style="width: 100%; padding: 6px; font-size: 0.85rem;">
+               style="${commonStyle}">
         <div id="hsCodeSuggestions-${item.id}" class="hs-suggestions" style="display: none;"></div>
       </td>
       <td>
-        <textarea rows="2" onchange="updateItem('${item.id}', 'description', this.value)" readonly style="font-size: 0.85rem; resize: vertical; background: #f8f9fa;">${item.description}</textarea>
+        <textarea rows="1" onchange="updateItem('${item.id}', 'description', this.value)" readonly style="${commonStyle}; resize: vertical; background: #f8f9fa;">${item.description}</textarea>
       </td>
       <td>
-        <select onchange="updateItem('${item.id}', 'saleType', this.value)" style="width: 100%; padding: 6px; font-size: 0.85rem;">
+        <select onchange="updateItem('${item.id}', 'saleType', this.value)" 
+        style="${commonStyle}">
           ${transactionTypeOptions}
         </select>
       </td>
       <td>
         <input type="number" value="${item.quantity}" min="1" 
-          onchange="updateItem('${item.id}', 'quantity', this.value)" style="width: 80px;">
+          onchange="updateItem('${item.id}', 'quantity', this.value)" style="${commonStyle}">
       </td>
       <td>
-        <select onchange="updateItem('${item.id}', 'uom', this.value)" style="width: 100%; padding: 6.5px; font-size: 0.85rem;">
+        <select onchange="updateItem('${item.id}', 'uom', this.value)" 
+        style="${commonStyle}">
           ${uomOptions}
         </select>
       </td>
       <td>
         <input type="number" value="${item.unitPrice}" min="0.01" step="0.01" 
-          onchange="updateItem('${item.id}', 'unitPrice', this.value)" style="width: 90px;">
+          onchange="updateItem('${item.id}', 'unitPrice', this.value)" style="${commonStyle}">
       </td>
       <td>
-        <select onchange="updateItem('${item.id}', 'taxRate', this.value)" style="width: 100%; padding: 6px; font-size: 0.85rem;" ${!item.taxRateOptions || item.taxRateOptions.length === 0 ? "disabled" : ""}>
+        <select onchange="updateItem('${item.id}', 'taxRate', this.value)" 
+        style=style="${commonStyle}" ${!item.taxRateOptions || item.taxRateOptions.length === 0 ? "disabled" : ""}>
           ${taxRateOptions}
         </select>
       </td>
-      <td style="font-weight: bold; color: var(--fbr-blue);">${total.toFixed(2)}</td>
-      <td class="action-cell">
+      <td style="font-weight: bold; color: var(--fbr-green); vertical-align: middle; text-align: center;">${salesTaxApplicable.toFixed(2)}</td>
+      <td rowspan="3" style="font-weight: bold; color: var(--fbr-blue); vertical-align: middle; text-align: center;">${total.toFixed(2)}</td>
+      <td rowspan="3" style="font-weight: bold; vertical-align: middle; text-align: center;">
         <button class="btn btn-sm btn-danger" onclick="removeItem('${item.id}')">
           <i class="fas fa-trash"></i>
         </button>
       </td>
     `
-    container.appendChild(mainRow)
+    container.appendChild(firstDataRow)
 
-    // Sub-row for SRO information
-    const sroRow = document.createElement("tr")
-    sroRow.className = "item-sro-row"
-    sroRow.style.backgroundColor = index % 2 === 0 ? "#f1f3f4" : "#e9ecef"
-    sroRow.style.borderBottom = "2px solid #dee2e6"
-    sroRow.innerHTML = `
-      <td colspan="3" style="padding-left: 20px; font-size: 0.85rem; color: #6c757d;">
-        <strong>SRO Details:</strong>
-      </td>
-      <td>
+    // Second header row for this item
+    const secondHeaderRow = document.createElement("tr")
+    // secondHeaderRow.className = "item-second-header"
+    secondHeaderRow.style.backgroundColor = colors.header2
+    secondHeaderRow.style.fontWeight = "bold"
+    
+    secondHeaderRow.style.border = "5px solid #c512f1ff"
+    secondHeaderRow.innerHTML = `
+      <th>SRO Schedule</th>
+      <th>SRO Item Serial</th>
+      <th>Annexure ID</th>
+      <th>Extra Tax</th>
+      <th>Further Tax</th>
+      <th>Discount</th>
+      <th>FED Payable</th>
+      <th>Tax Withheld</th>
+      
+      <th>Total Tax</th>
+    `
+    container.appendChild(secondHeaderRow)
+
+    // Second data row for additional tax fields and SRO details
+    const secondDataRow = document.createElement("tr")
+    // secondDataRow.className = "item-second-data"
+    secondDataRow.style.backgroundColor = colors.data2
+    // secondDataRow.style.borderBottom = "5px solid #ffffff"
+    secondDataRow.style.border = "5px solid #061c58ff"
+    secondDataRow.innerHTML = `
+    <td style="padding: 2px;">
         <select onchange="updateItem('${item.id}', 'sroSchedule', this.value)" 
-                style="width: 100%; padding: 6px; font-size: 0.85rem;" 
+                style="${commonStyle}" 
                 ${sroScheduleDisabled ? "disabled" : ""}>
           <option value="">Select SRO Schedule</option>
           ${sroScheduleOptions}
         </select>
-        <small style="color: #6c757d; display: block; margin-top: 2px;">
-          ${sroScheduleDisabled ? "Select tax rate first" : "SRO Schedule"}
-        </small>
       </td>
-      <td colspan="2">
+      <td style="padding: 2px;">
         <select onchange="updateItem('${item.id}', 'sroItem', this.value)" 
-                style="width: 100%; padding: 6px; font-size: 0.85rem;" 
+                style="${commonStyle}" 
                 ${sroItemDisabled ? "disabled" : ""}>
           <option value="">Select SRO Item</option>
           ${sroItemOptions}
         </select>
-        <small style="color: #6c757d; display: block; margin-top: 2px;">
-          ${sroItemDisabled ? "Select SRO schedule first" : "SRO Item Serial"}
-        </small>
+      </td>
+      <td style="padding: 2px;">
+        <input type="number" value="${item.annexureId || 3}" min="1" readonly
+          style="${commonStyle} background: #e9ecef;" 
+          title="Fixed at 3 for UoM fetching">
       </td>
       <td>
-        <small style="color: #6c757d;">Annexure ID:</small><br>
-        <input type="number" value="${item.annexureId || 3}" min="1" readonly
-          style="width: 60px; padding: 4px; font-size: 0.8rem; background: #e9ecef;" 
-          title="Fixed at 3 for UoM fetching as per FBR documentation">
+        <input type="number" value="${item.extraTax || 0}" min="0" step="0.01" 
+          onchange="updateItem('${item.id}', 'extraTax', this.value)" style="${commonStyle}">
       </td>
-      <td colspan="2" style="font-size: 0.85rem; color: #6c757d;">
-        Rate ID: ${item.rateId || "Not selected"}<br>
-        <small>Used for SRO chaining</small>
+      <td style="padding: 2px;">
+        <input type="number" value="${item.furtherTax || 0}" min="0" step="0.01" 
+          onchange="updateItem('${item.id}', 'furtherTax', this.value)" style="${commonStyle}">
       </td>
+      <td style="padding: 2px;">
+        <input type="number" value="${item.discount || 0}" min="0" step="0.01" 
+          onchange="updateItem('${item.id}', 'discount', this.value)" style="${commonStyle}">
+      </td>
+      <td style="padding: 2px;">
+        <input type="number" value="${item.fedPayable || 0}" min="0" step="0.01" 
+          onchange="updateItem('${item.id}', 'fedPayable', this.value)" style="${commonStyle}">
+      </td>
+      <td style="padding: 2px;">
+        <input type="number" value="${item.salesTaxWithheldAtSource || 0}" min="0" step="0.01" 
+          onchange="updateItem('${item.id}', 'salesTaxWithheldAtSource', this.value)" style="${commonStyle}">
+      </td>
+      
+      <td style="font-weight: bold; color: var(--fbr-dark); padding: 2px; font-size: 0.8rem; text-align: center;">${totalTax.toFixed(2)}</td>
     `
-    container.appendChild(sroRow)
+    container.appendChild(secondDataRow)
+
+    // No additional row needed as fields are now in main row
   })
 }
 
@@ -3797,15 +3887,25 @@ window.selectHSCode = (itemId, hsCode, description) => {
 function updateInvoiceTotal() {
   let subTotal = 0;
   let totalTax = 0;
+  let totalExtraTax = 0;
+  let totalFurtherTax = 0;
+  let totalDiscount = 0;
   
   items.forEach((item) => {
     const value = item.quantity * item.unitPrice;
     const salesTaxApplicable = (value * item.taxRate) / 100;
+    const extraTax = item.extraTax || 0;
+    const furtherTax = item.furtherTax || 0;
+    const discount = item.discount || 0;
+    
     subTotal += value;
     totalTax += salesTaxApplicable;
+    totalExtraTax += extraTax;
+    totalFurtherTax += furtherTax;
+    totalDiscount += discount;
   });
   
-   grandTotal = subTotal + totalTax;
+   grandTotal = subTotal + totalTax + totalExtraTax + totalFurtherTax - totalDiscount;
   
   // Update line item count
   const lineItemCountElement = document.getElementById("lineItemCount");
@@ -3822,7 +3922,7 @@ function updateInvoiceTotal() {
   // Update total tax
   const totalTaxElement = document.getElementById("totalTax");
   if (totalTaxElement) {
-    totalTaxElement.textContent = `${totalTax.toFixed(2)} PKR`;
+    totalTaxElement.textContent = `${(totalTax + totalExtraTax + totalFurtherTax).toFixed(2)} PKR`;
   }
   
   // Update grand total
@@ -3881,6 +3981,11 @@ async function loadInvoiceIntoForm(invoice) {
         quantity: parseFloat(item.quantity) || 1,
         unitPrice: parseFloat(item.unitPrice) || 0,
         taxRate: parseFloat(item.taxRate) || parseFloat(item.rate) || 0,
+        extraTax: parseFloat(item.extraTax) || 0,
+        furtherTax: parseFloat(item.furtherTax) || 0,
+        discount: parseFloat(item.discount) || 0,
+        fedPayable: parseFloat(item.fedPayable) || 0,
+        salesTaxWithheldAtSource: parseFloat(item.salesTaxWithheldAtSource) || 0,
         rateId: item.rateId || null,
         sroSchedule: item.sroSchedule || '',
         sroItem: item.sroItem || '',
@@ -4181,12 +4286,13 @@ function initModals() {
           valueSalesExcludingST: value,
           salesTaxApplicable: salesTaxApplicable,
           salesTaxWithheldAtSource: 0,
-          extraTax: 0,
-          furtherTax: 0,
-          totalValues: totalValues,
+          extraTax: item.extraTax || 0,
+          furtherTax: item.furtherTax || 0,
+          totalValues: value + salesTaxApplicable + (item.extraTax || 0) + (item.furtherTax || 0) - (item.discount || 0),
           sroScheduleNo: sroScheduleNo,
-          fedPayable: DOMElements.scenarioId.value === "SN018" ? 50 : 0,
-          discount: 0,
+          fedPayable: item.fedPayable || 0,
+          discount: item.discount || 0,
+          salesTaxWithheldAtSource: item.salesTaxWithheldAtSource || 0,
           saleType: item.saleType || "Services",
           sroItemSerialNo: sroItemSerialNo,
           fixedNotifiedValueOrRetailPrice: 0,
@@ -4454,9 +4560,13 @@ async function generateInvoicePDF(response, isDummy = false, isPreview = false) 
     const gross = itemsList.reduce((sum, i) => sum + Number(i.valueSalesExcludingST ?? (i.quantity * i.unitPrice) ?? 0), 0);
     const tax = itemsList.reduce((sum, i) => {
       const taxRateVal = typeof i.taxRate === "number" ? i.taxRate : parseFloat(i.rate) || 0;
-      return sum + Number(i.salesTaxApplicable ?? (i.quantity * i.unitPrice * taxRateVal / 100) ?? 0);
+      const salesTax = Number(i.salesTaxApplicable ?? (i.quantity * i.unitPrice * taxRateVal / 100) ?? 0);
+      const extraTax = Number(i.extraTax ?? 0);
+      const furtherTax = Number(i.furtherTax ?? 0);
+      return sum + salesTax + extraTax + furtherTax;
     }, 0);
-    const total = gross + tax;
+    const totalDiscount = itemsList.reduce((sum, i) => sum + Number(i.discount ?? 0), 0);
+    const total = gross + tax - totalDiscount;
 
     // Draw item rows and keep track of last Y
     let rowYs = [];
@@ -4465,8 +4575,12 @@ async function generateInvoicePDF(response, isDummy = false, isPreview = false) 
       // Show all rows, including the last one
       const amount = Number(item.valueSalesExcludingST ?? (item.quantity * item.unitPrice) ?? 0);
       const taxRateVal = typeof item.taxRate === "number" ? item.taxRate : parseFloat(item.rate) || 0;
-      const taxAmt = Number(item.salesTaxApplicable ?? (item.quantity * item.unitPrice * taxRateVal / 100) ?? 0);
-      const total = Number(item.totalValues ?? (amount + taxAmt) ?? 0);
+      const salesTaxAmt = Number(item.salesTaxApplicable ?? (item.quantity * item.unitPrice * taxRateVal / 100) ?? 0);
+      const extraTax = Number(item.extraTax ?? 0);
+      const furtherTax = Number(item.furtherTax ?? 0);
+      const discount = Number(item.discount ?? 0);
+      const taxAmt = salesTaxAmt + extraTax + furtherTax;
+      const total = amount + taxAmt - discount;
 
       const row = [
       (idx + 1).toString(),
@@ -4613,9 +4727,13 @@ async function generateInvoicePDF(response, isDummy = false, isPreview = false) 
     const tax = itemsList.reduce((sum, i) => {
       const taxRateVal = Number(i.taxRate || parseFloat(i.rate) || 0);
       const amount = Number(i.valueSalesExcludingST || (i.quantity * (i.unitPrice || 0)) || 0);
-      return sum + Number(i.salesTaxApplicable || (amount * taxRateVal / 100) || 0);
+      const salesTax = Number(i.salesTaxApplicable || (amount * taxRateVal / 100) || 0);
+      const extraTax = Number(i.extraTax || 0);
+      const furtherTax = Number(i.furtherTax || 0);
+      return sum + salesTax + extraTax + furtherTax;
     }, 0);
-    const total = gross + tax;
+    const totalDiscount = itemsList.reduce((sum, i) => sum + Number(i.discount || 0), 0);
+    const total = gross + tax - totalDiscount;
 
     invoicePreview.innerHTML = `
       <style>
@@ -4687,8 +4805,12 @@ async function generateInvoicePDF(response, isDummy = false, isPreview = false) 
           ${itemsList.map((item, idx) => {
             const amount = Number(item.valueSalesExcludingST || (item.quantity * (item.unitPrice || 0)) || 0);
             const taxRateVal = Number(item.taxRate || parseFloat(item.rate) || 0);
-            const taxAmt = Number(item.salesTaxApplicable || (amount * taxRateVal / 100) || 0);
-            const total = amount + taxAmt;
+            const salesTaxAmt = Number(item.salesTaxApplicable || (amount * taxRateVal / 100) || 0);
+            const extraTax = Number(item.extraTax || 0);
+            const furtherTax = Number(item.furtherTax || 0);
+            const discount = Number(item.discount || 0);
+            const taxAmt = salesTaxAmt + extraTax + furtherTax;
+            const total = amount + taxAmt - discount;
             return `
               <tr>
                 <td>${idx + 1}</td>
@@ -4748,9 +4870,11 @@ async function getDummyInvoiceResponse() {
       valueSalesExcludingST: amount,
       salesTaxApplicable: taxAmt,
       salesTaxWithheldAtSource: 0,
-      extraTax: 0,
-      furtherTax: 0,
-      totalValues: total,
+      extraTax: item.extraTax || 0,
+      furtherTax: item.furtherTax || 0,
+      totalValues: amount + taxAmt + (item.extraTax || 0) + (item.furtherTax || 0) - (item.discount || 0),
+      fedPayable: item.fedPayable || 0,
+      salesTaxWithheldAtSource: item.salesTaxWithheldAtSource || 0,
       sroScheduleNo: "",
       fedPayable: 0,
       discount: 0,
@@ -5252,12 +5376,13 @@ function initFormActions() {
             valueSalesExcludingST: value,
             salesTaxApplicable: salesTaxApplicable,
             salesTaxWithheldAtSource: 0,
-            extraTax: 0,
-            furtherTax: 0,
-            totalValues: totalValues,
+            extraTax: item.extraTax || 0,
+            furtherTax: item.furtherTax || 0,
+            totalValues: value + salesTaxApplicable + (item.extraTax || 0) + (item.furtherTax || 0) - (item.discount || 0),
             sroScheduleNo: sroScheduleNo,
-            fedPayable: DOMElements.scenarioId.value === "SN018" ? 50 : 0,
-            discount: 0,
+            fedPayable: item.fedPayable || 0,
+            discount: item.discount || 0,
+            salesTaxWithheldAtSource: item.salesTaxWithheldAtSource || 0,
             saleType: item.saleType || "Services",
             sroItemSerialNo: sroItemSerialNo,
             fixedNotifiedValueOrRetailPrice: 0,

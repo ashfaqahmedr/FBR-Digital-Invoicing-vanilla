@@ -6,26 +6,17 @@
   <title>FBR Digital Invoicing System</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <!-- <script type="module" src="https://cdn.jsdelivr.net/npm/axios@1.6.0/+esm"></script> -->
-<!-- <script src="
-https://cdn.jsdelivr.net/npm/dompurify@3.2/dist/purify.min.js
-"></script>
- -->
-
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.0/build/qrcode.min.js"></script>
 
-   <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script> -->
-  <!-- <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script> -->
   
   <link rel="stylesheet" href="index.css">
-  <!-- <link rel="stylesheet" href="summary-styles.css"> -->
+
 
   <script>
     window.jsPDF = window.jspdf.jsPDF;
     window.QRCode = window.QRCode;
-    window.DOMPurify = window.dompurify || {};
 
   </script>
 
@@ -186,68 +177,7 @@ https://cdn.jsdelivr.net/npm/dompurify@3.2/dist/purify.min.js
           <div class="items-container">
             <table class="items-table">
               <thead>
-                <tr>
-                  <th style="width: 180px;">
-                    <div class="th-content">
-                      <i class="fas fa-search"></i>
-                      <span>Search Product</span>
-                    </div>
-                  </th>
-                  <th style="width: 120px;">
-                    <div class="th-content">
-                      <i class="fas fa-barcode"></i>
-                      <span>HS Code</span>
-                    </div>
-                  </th>
-                  <th>
-                    <div class="th-content">
-                      <i class="fas fa-box"></i>
-                      <span>Product Description</span>
-                    </div>
-                  </th>
-                  <th>
-                    <div class="th-content">
-                      <i class="fas fa-cogs"></i>
-                      <span>Service Type</span>
-                    </div>
-                  </th>
-                  <th>
-                    <div class="th-content">
-                      <i class="fas fa-sort-amount-up"></i>
-                      <span>Quantity</span>
-                    </div>
-                  </th>
-                  <th>
-                    <div class="th-content">
-                      <i class="fas fa-ruler"></i>
-                      <span>UoM</span>
-                    </div>
-                  </th>
-                  <th>
-                    <div class="th-content">
-                      <i class="fas fa-tag"></i>
-                      <span>Unit Price</span>
-                    </div>
-                  </th>
-                  <th>
-                    <div class="th-content">
-                      <i class="fas fa-percent"></i>
-                      <span>Tax Rate</span>
-                    </div>
-                  </th>
-                  <th>
-                    <div class="th-content">
-                      <i class="fas fa-calculator"></i>
-                      <span>Total Value</span>
-                    </div>
-                  </th>
-                  <th>
-                    <div class="th-content">
-                      <i class="fas fa-cog"></i>
-                      <span>Actions</span>
-                    </div>
-                  </th>
-                </tr>
+                <!-- Headers are now generated dynamically for each item -->
               </thead>
               <tbody id="itemsBody">
             
