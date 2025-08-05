@@ -3363,7 +3363,17 @@ function renderItems() {
     const mainRow = document.createElement("tr")
     mainRow.className = "item-main-row"
     mainRow.style.borderBottom = "1px solid #dee2e6"
+    mainRow.style.backgroundColor = index % 2 === 0 ? "#ffffff" : "#f8f9fa"
     mainRow.innerHTML = `
+      <td style="width: 180px; position: relative;">
+        <input type="text" 
+               class="product-search-input"
+               placeholder="Search Product..."
+               onfocus="showProductSuggestions('${item.id}')"
+               onkeyup="debounceProductSearch('${item.id}', this.value)"
+               style="width: 100%; padding: 6px; font-size: 0.85rem;">
+        <div id="productSuggestions-${item.id}" class="product-suggestions" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; background: white; border: 1px solid #ddd; max-height: 200px; overflow-y: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.2);"></div>
+      </td>
       <td style="width: 120px; position: relative;">
         <input type="text" 
                class="hs-code-input"
@@ -3412,10 +3422,10 @@ function renderItems() {
     // Sub-row for SRO information
     const sroRow = document.createElement("tr")
     sroRow.className = "item-sro-row"
-    sroRow.style.backgroundColor = "#f8f9fa"
+    sroRow.style.backgroundColor = index % 2 === 0 ? "#f1f3f4" : "#e9ecef"
     sroRow.style.borderBottom = "2px solid #dee2e6"
     sroRow.innerHTML = `
-      <td colspan="2" style="padding-left: 20px; font-size: 0.85rem; color: #6c757d;">
+      <td colspan="3" style="padding-left: 20px; font-size: 0.85rem; color: #6c757d;">
         <strong>SRO Details:</strong>
       </td>
       <td>
@@ -3455,6 +3465,146 @@ function renderItems() {
   })
 }
 
+// Global functions for HTML onclick handlers
+window.updateItem = updateItem
+window.removeItem = removeItem
+
+// --- Invoice Management: View & Edit ---
+window.viewInvoice = async (invoiceId) => {
+  try {
+    
+    const invoice = await dbGet(STORE_NAMES.invoices, String(invoiceId));
+    if (!invoice) {
+      console.error('Invoice not found for ID:', invoiceId);
+      return showToast('error', 'Invoice Not Found', 'No invoice found for viewing.');
+    }
+    
+    console.log('Invoice data loaded:', invoice);
+    
+    // Store the invoice for preview
+    window.currentInvoiceData = invoice;
+    lastSubmissionResponse = invoice;
+    
+    // Show the preview modal first to avoid timing issues
+    const previewModal = document.getElementById('previewModal');
+    if (previewModal) {
+      previewModal.classList.add('active');
+    }
+    
+    // Generate the preview using the same function as the PDF generation
+    // This ensures consistency between preview and PDF output
+    generateInvoicePDF(invoice, invoice.status === 'draft', true);
+    
+  } catch (e) {
+    console.error('Error viewing invoice:', e);
+    showToast('error', 'View Invoice Failed', e.message || e);
+  }
+};
+
+window.editInvoice = async (invoiceId) => {
+  try {
+    const invoice = await dbGet(STORE_NAMES.invoices, String(invoiceId));
+    if (!invoice) return showToast('error', 'Invoice Not Found', 'No invoice found for editing.');
+    if (invoice.status === 'submitted') {
+      showToast('warning', 'Edit Not Allowed', 'Submitted invoices cannot be edited.');
+      return;
+    }
+    
+    // Set edit state
+    currentEditingInvoice = { ...invoice };
+    originalInvoiceState = JSON.parse(JSON.stringify(invoice));
+    
+    // Switch to the Create Invoice tab first
+    switchToCreateInvoiceTab();
+    
+    // Keep the original invoice reference for editing in place
+    // Don't generate a new reference number
+    
+    // Load invoice data into the Create Invoice form for editing
+    await loadInvoiceIntoForm(invoice);
+    
+    // Update UI to show edit state
+    updateEditStateUI(true);
+    
+    showToast('info', 'Edit Draft', 'Draft invoice loaded for editing.');
+  } catch (e) {
+    showToast('error', 'Edit Invoice Failed', e.message || e);
+  }
+};
+// Duplicate invoice function
+window.duplicateInvoice = async (invoiceId) => {
+  try {
+    const invoice = await dbGet(STORE_NAMES.invoices, String(invoiceId))
+    if (!invoice) {
+      showToast('error', 'Invoice Not Found', 'No invoice found for duplication.')
+      return
+    }
+    
+    // Switch to create invoice tab
+    switchToCreateInvoiceTab()
+    
+    // Load invoice data but generate new reference
+    await loadInvoiceIntoForm(invoice)
+    
+    // Clear editing state to make it a new invoice
+    currentEditingInvoice = null
+    originalInvoiceState = null
+    
+    // Generate new reference number
+    await updateInvoiceReference()
+    
+    // Update UI
+    updateEditStateUI(false)
+    
+    showToast('success', 'Invoice Duplicated', 'Invoice has been duplicated for editing.')
+  } catch (e) {
+    showToast('error', 'Duplicate Failed', e.message || e)
+  }
+}
+
+// Duplicate invoice function
+window.duplicateInvoice = async (invoiceId) => {
+  try {
+    const invoice = await dbGet(STORE_NAMES.invoices, String(invoiceId));
+    if (!invoice) {
+      showToast('error', 'Error', 'Invoice not found');
+      return;
+    }
+    
+    // Create a deep copy of the invoice
+    const newInvoice = JSON.parse(JSON.stringify(invoice));
+    
+    // Reset fields for the new invoice
+    delete newInvoice.id;
+    newInvoice.status = 'draft';
+    newInvoice.createdAt = new Date().toISOString();
+    newInvoice.updatedAt = new Date().toISOString();
+    
+    // Generate a new reference number
+    const seller = await dbGet(STORE_NAMES.sellers, newInvoice.sellerNTNCNIC);
+    if (seller) {
+      newInvoice.invoiceRefNo = await getNextInvoiceRef(seller.ntn, newInvoice.invoiceType);
+      newInvoice.invoiceRef = newInvoice.invoiceRefNo; // For backward compatibility
+    }
+    
+    // Save the new invoice
+    await dbSet(STORE_NAMES.invoices, newInvoice);
+    
+    // Update the UI
+    await populateInvoicesTable();
+    
+    // Switch to the create invoice tab with the duplicated invoice
+    switchToCreateInvoiceTab();
+    await loadInvoiceIntoForm(newInvoice);
+    
+    showToast('success', 'Invoice Duplicated', 'A new draft has been created from the selected invoice');
+  } catch (error) {
+    console.error('Error duplicating invoice:', error);
+    showToast('error', 'Error', 'Failed to duplicate invoice');
+  }
+};
+
+
 let hsCodeSearchTimeout
 window.debounceHSCodeSearch = (itemId, searchTerm) => {
   clearTimeout(hsCodeSearchTimeout)
@@ -3462,6 +3612,136 @@ window.debounceHSCodeSearch = (itemId, searchTerm) => {
     searchHSCodes(itemId, searchTerm)
   }, 250) // half second debounce
 }
+
+// Product search functionality
+let productSearchTimeout
+window.debounceProductSearch = (itemId, searchTerm) => {
+  clearTimeout(productSearchTimeout)
+  productSearchTimeout = setTimeout(() => {
+    searchProductsForItem(itemId, searchTerm)
+  }, 250)
+}
+
+window.showProductSuggestions = async (itemId) => {
+  const suggestionsDiv = document.getElementById(`productSuggestions-${itemId}`)
+  if (!suggestionsDiv) return
+  
+  // Show loading state
+  suggestionsDiv.innerHTML = '<div style="padding: 8px; text-align: center; color: #666;"><i class="fas fa-spinner fa-spin"></i> Loading products...</div>'
+  suggestionsDiv.style.display = 'block'
+  
+  // Load recent products or show all
+  const products = await dbGetAll(STORE_NAMES.products)
+  if (products.length === 0) {
+    suggestionsDiv.innerHTML = '<div style="padding: 12px; text-align: center; color: #666; font-style: italic;">No products found. <a href="#" onclick="switchToProductsTab()" style="color: var(--fbr-blue); text-decoration: none;">Add products first</a></div>'
+    return
+  }
+  
+  // Show first 5 products as suggestions
+  const recentProducts = products.slice(0, 5)
+  displayProductSuggestions(itemId, recentProducts)
+}
+
+async function searchProductsForItem(itemId, searchTerm) {
+  const suggestionsDiv = document.getElementById(`productSuggestions-${itemId}`)
+  if (!suggestionsDiv) return
+  
+  if (!searchTerm || searchTerm.length < 1) {
+    await showProductSuggestions(itemId)
+    return
+  }
+  
+  const products = await dbGetAll(STORE_NAMES.products)
+  const filteredProducts = products.filter(product => {
+    const searchLower = searchTerm.toLowerCase()
+    return (
+      (product.productName || '').toLowerCase().includes(searchLower) ||
+      (product.hsCode || '').toLowerCase().includes(searchLower) ||
+      (product.description || '').toLowerCase().includes(searchLower) ||
+      (product.productType || '').toLowerCase().includes(searchLower)
+    )
+  }).slice(0, 10)
+  
+  if (filteredProducts.length === 0) {
+    suggestionsDiv.innerHTML = '<div style="padding: 8px; text-align: center; color: #666;">No products found</div>'
+    suggestionsDiv.style.display = 'block'
+    return
+  }
+  
+  displayProductSuggestions(itemId, filteredProducts)
+}
+
+function displayProductSuggestions(itemId, products) {
+  const suggestionsDiv = document.getElementById(`productSuggestions-${itemId}`)
+  if (!suggestionsDiv) return
+  
+  suggestionsDiv.innerHTML = products
+    .map(product => `
+      <div onclick="selectProductForItem('${itemId}', '${product.id}')" 
+           style="padding: 8px; cursor: pointer; border-bottom: 1px solid #eee; hover: background-color: #f8f9fa;"
+           onmouseover="this.style.backgroundColor='#f8f9fa'"
+           onmouseout="this.style.backgroundColor='white'">
+        <div style="font-weight: bold; color: #0052A5;">${product.productName || 'Unnamed Product'}</div>
+        <div style="font-size: 0.8em; color: #666;">
+          <span>HS: ${product.hsCode || 'N/A'}</span> | 
+          <span>Type: ${product.productType || 'N/A'}</span> | 
+          <span>Rate: PKR ${(product.saleRate || 0).toFixed(2)}</span>
+        </div>
+      </div>
+    `)
+    .join('')
+  
+  suggestionsDiv.style.display = 'block'
+}
+
+window.selectProductForItem = async (itemId, productId) => {
+  try {
+    // Hide suggestions
+    const suggestionsDiv = document.getElementById(`productSuggestions-${itemId}`)
+    if (suggestionsDiv) {
+      suggestionsDiv.style.display = 'none'
+    }
+    
+    // Clear the search input
+    const parentTd = document.getElementById(`productSuggestions-${itemId}`).parentElement
+    const searchInput = parentTd.querySelector('.product-search-input')
+    if (searchInput) {
+      searchInput.value = ''
+    }
+    
+    // Remove the current item from the items array
+    const itemIndex = items.findIndex(item => item.id === itemId)
+    if (itemIndex !== -1) {
+      items.splice(itemIndex, 1)
+    }
+    
+    // Add the selected product using existing functionality
+    await addProductToInvoiceFromTable(productId)
+    
+    showToast('success', 'Product Added', 'Product has been added to the invoice')
+  } catch (error) {
+    console.error('Error selecting product:', error)
+    showToast('error', 'Error', 'Failed to add product: ' + error.message)
+  }
+}
+
+// Function to switch to products tab
+window.switchToProductsTab = () => {
+  document.querySelectorAll(".nav-btn").forEach((btn) => btn.classList.remove("active"))
+  document.querySelectorAll(".tab-content").forEach((tab) => tab.classList.remove("active"))
+  
+  document.querySelector('[data-tab="products-tab"]').classList.add("active")
+  document.getElementById("products-tab").classList.add("active")
+}
+
+// Hide suggestions when clicking outside
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.product-search-input') && !e.target.closest('.product-suggestions')) {
+    document.querySelectorAll('.product-suggestions').forEach(div => {
+      div.style.display = 'none'
+    })
+  }
+})
 
 function searchHSCodes(itemId, searchTerm) {
   const suggestionsDiv = document.getElementById(`hsCodeSuggestions-${itemId}`)
@@ -3551,73 +3831,6 @@ function updateInvoiceTotal() {
     invoiceTotalElement.textContent = `${grandTotal.toFixed(2)} PKR`;
   }
 }
-
-// Global functions for HTML onclick handlers
-window.updateItem = updateItem
-window.removeItem = removeItem
-
-// --- Invoice Management: View & Edit ---
-window.viewInvoice = async (invoiceId) => {
-  try {
-    
-    const invoice = await dbGet(STORE_NAMES.invoices, String(invoiceId));
-    if (!invoice) {
-      console.error('Invoice not found for ID:', invoiceId);
-      return showToast('error', 'Invoice Not Found', 'No invoice found for viewing.');
-    }
-    
-    console.log('Invoice data loaded:', invoice);
-    
-    // Store the invoice for preview
-    window.currentInvoiceData = invoice;
-    lastSubmissionResponse = invoice;
-    
-    // Show the preview modal first to avoid timing issues
-    const previewModal = document.getElementById('previewModal');
-    if (previewModal) {
-      previewModal.classList.add('active');
-    }
-    
-    // Generate the preview using the same function as the PDF generation
-    // This ensures consistency between preview and PDF output
-    generateInvoicePDF(invoice, invoice.status === 'draft', true);
-    
-  } catch (e) {
-    console.error('Error viewing invoice:', e);
-    showToast('error', 'View Invoice Failed', e.message || e);
-  }
-};
-
-window.editInvoice = async (invoiceId) => {
-  try {
-    const invoice = await dbGet(STORE_NAMES.invoices, String(invoiceId));
-    if (!invoice) return showToast('error', 'Invoice Not Found', 'No invoice found for editing.');
-    if (invoice.status === 'submitted') {
-      showToast('warning', 'Edit Not Allowed', 'Submitted invoices cannot be edited.');
-      return;
-    }
-    
-    // Set edit state
-    currentEditingInvoice = { ...invoice };
-    originalInvoiceState = JSON.parse(JSON.stringify(invoice));
-    
-    // Switch to the Create Invoice tab first
-    switchToCreateInvoiceTab();
-    
-    // Keep the original invoice reference for editing in place
-    // Don't generate a new reference number
-    
-    // Load invoice data into the Create Invoice form for editing
-    await loadInvoiceIntoForm(invoice);
-    
-    // Update UI to show edit state
-    updateEditStateUI(true);
-    
-    showToast('info', 'Edit Draft', 'Draft invoice loaded for editing.');
-  } catch (e) {
-    showToast('error', 'Edit Invoice Failed', e.message || e);
-  }
-};
 
 // Helper: Render invoice in preview modal
 function renderInvoicePreview(invoice) {
@@ -4831,6 +5044,28 @@ function initFormActions() {
     DOMElements.addItemBtn.addEventListener("click", addNewItem)
   }
 
+  // Add Product to Invoice button
+  const addProductToInvoiceBtn = document.getElementById('addProductToInvoiceBtn')
+  if (addProductToInvoiceBtn) {
+    addProductToInvoiceBtn.addEventListener('click', async () => {
+      const productModal = document.getElementById('productModal')
+      const productForm = document.getElementById('productForm')
+      const productModalTitle = document.getElementById('productModalTitle')
+      const addToInvoiceBtn = document.getElementById('addToInvoiceBtn')
+      
+      if (productModal && productForm && productModalTitle) {
+        currentEditingProduct = null
+        productForm.reset()
+        productModalTitle.textContent = 'Add Product to Invoice'
+        addToInvoiceBtn.style.display = 'inline-block'
+        showProductModalLoader(true)
+        productModal.classList.add('active')
+        await populateProductModalOptions()
+        showProductModalLoader(false)
+      }
+    })
+  }
+
   // Add Test Draft Invoice button handler
   if (DOMElements.addInvoiceBtn) {
     DOMElements.addInvoiceBtn.addEventListener("click", async () => {
@@ -5447,78 +5682,6 @@ async function getNextInvoiceRef(sellerId, invoiceType) {
   return refNumber;
 }
 
-// Duplicate invoice function
-window.duplicateInvoice = async (invoiceId) => {
-  try {
-    const invoice = await dbGet(STORE_NAMES.invoices, String(invoiceId))
-    if (!invoice) {
-      showToast('error', 'Invoice Not Found', 'No invoice found for duplication.')
-      return
-    }
-    
-    // Switch to create invoice tab
-    switchToCreateInvoiceTab()
-    
-    // Load invoice data but generate new reference
-    await loadInvoiceIntoForm(invoice)
-    
-    // Clear editing state to make it a new invoice
-    currentEditingInvoice = null
-    originalInvoiceState = null
-    
-    // Generate new reference number
-    await updateInvoiceReference()
-    
-    // Update UI
-    updateEditStateUI(false)
-    
-    showToast('success', 'Invoice Duplicated', 'Invoice has been duplicated for editing.')
-  } catch (e) {
-    showToast('error', 'Duplicate Failed', e.message || e)
-  }
-}
-
-// Duplicate invoice function
-window.duplicateInvoice = async (invoiceId) => {
-  try {
-    const invoice = await dbGet(STORE_NAMES.invoices, String(invoiceId));
-    if (!invoice) {
-      showToast('error', 'Error', 'Invoice not found');
-      return;
-    }
-    
-    // Create a deep copy of the invoice
-    const newInvoice = JSON.parse(JSON.stringify(invoice));
-    
-    // Reset fields for the new invoice
-    delete newInvoice.id;
-    newInvoice.status = 'draft';
-    newInvoice.createdAt = new Date().toISOString();
-    newInvoice.updatedAt = new Date().toISOString();
-    
-    // Generate a new reference number
-    const seller = await dbGet(STORE_NAMES.sellers, newInvoice.sellerNTNCNIC);
-    if (seller) {
-      newInvoice.invoiceRefNo = await getNextInvoiceRef(seller.ntn, newInvoice.invoiceType);
-      newInvoice.invoiceRef = newInvoice.invoiceRefNo; // For backward compatibility
-    }
-    
-    // Save the new invoice
-    await dbSet(STORE_NAMES.invoices, newInvoice);
-    
-    // Update the UI
-    await populateInvoicesTable();
-    
-    // Switch to the create invoice tab with the duplicated invoice
-    switchToCreateInvoiceTab();
-    await loadInvoiceIntoForm(newInvoice);
-    
-    showToast('success', 'Invoice Duplicated', 'A new draft has been created from the selected invoice');
-  } catch (error) {
-    console.error('Error duplicating invoice:', error);
-    showToast('error', 'Error', 'Failed to duplicate invoice');
-  }
-};
 
 
 // Delete invoice function
