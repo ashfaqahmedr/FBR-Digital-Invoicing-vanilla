@@ -634,41 +634,30 @@
   /* Items Table */
   .items-table {
     width: 100%;
-    border-collapse: collapse;
+    /* border-collapse: separate; */
+    /* border-spacing: 0 6px; */
     margin: 0;
   }
   
   /* Items Table Header and Data CSS */
-  /* .items-table th, .items-table td {
-    padding: 2px 10px;
+  .items-table th, .items-table td {
+    padding: 8px 10px;
     text-align: left;
     border: 1px solid #dee2e6;
     vertical-align: middle;
     font-size: 0.9rem;
   }
-   */
+  
   /* Items Table Header CSS - Sticky */
   .items-table th {
-    padding: 2px 10px;
-    border: 2px solid black;
     background-color: var(--fbr-gray);
-    font-size: 0.9rem;
-    color: #0f0f0f;
+    font-weight: 600;
+    color: #495057;
     position: sticky;
-    text-align: center;
-    vertical-align: middle;
     top: 0;
     z-index: 10;
   }
   
-  .items-table tr {
-  border: 2px solid black;
-  border-radius: 10px;
-   text-align: center;
-  border-collapse: separate;
-
-  }
-
   /* Pagination Container - Sticky */
   .pagination-container {
     position: sticky;
@@ -1757,12 +1746,125 @@
 
 /* Invoice Items Table */
 #itemsBody {
-  background: #22120b;
-  color: #f8f9fa;
-  border-radius: 4px;
-  /* padding: 10px 15px;
-  border-radius: 4px;
-  margin-bottom: 15px;
+  /* background: #e44a03; */
+  /* padding: 2px; */
+  /* border-radius: 4px; */
+  /* margin: 2px; */
   overflow-x: auto;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); */
+  /* box-shadow: 0 2px 2px rgba(0, 0, 0, 0.05); */
+}
+
+/* Items Container Background */
+.items-container {
+  background: #e3f2fd;
+  padding: 2px;
+  border-radius: 8px;
+  margin: 2px 0;
+}
+
+/* Line Item Container Styling */
+.items-table tbody tr.item-first-header {
+  border-top: 1px solid #dee2e6;
+  border-left: 1px solid #dee2e6;
+  border-right: 1px solid #dee2e6;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  /* box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08); */
+}
+
+.items-table tbody tr.item-first-data,
+.items-table tbody tr.item-second-header {
+  border-left: 1px solid #dee2e6;
+  border-right: 1px solid #dee2e6;
+}
+
+.items-table tbody tr.item-second-data {
+  border-bottom: 1px solid #dee2e6;
+  border-left: 1px solid #dee2e6;
+  border-right: 1px solid #dee2e6;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  margin-bottom: 2px;
+}
+
+/* Header and Data Cell Styling */
+.items-table .item-first-header th,
+.items-table .item-second-header th {
+  padding: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: transparent;
+  color: #000000;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.items-table .item-first-data td,
+.items-table .item-second-data td {
+  padding: 0;
+  margin: 0;
+  border: none;
+  font-size: 0.8rem;
+  background-color: transparent;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* Row-level Rounded Corners */
+.items-table .item-first-header {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.items-table .item-first-header th:first-child {
+  border-top-left-radius: 8px;
+}
+
+.items-table .item-first-header th:last-child {
+  border-top-right-radius: 8px;
+}
+
+.items-table .item-second-data {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.items-table .item-second-data td:first-child {
+  border-bottom-left-radius: 8px;
+}
+
+.items-table .item-second-data td:last-child {
+  border-bottom-right-radius: 8px;
+}
+
+/* Remove default table borders for line items */
+.items-table .item-first-header th,
+.items-table .item-first-data td,
+.items-table .item-second-header th,
+.items-table .item-second-data td {
+  /* border: 5px solid #007bff;
+  border-radius: 5px; */
+  border:none;
+  box-shadow: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Add vertical borders between cells */
+.items-table .item-first-header th:not(:last-child),
+.items-table .item-first-data td:not(:last-child),
+.items-table .item-second-header th:not(:last-child),
+.items-table .item-second-data td:not(:last-child) {
+  border-right: 1px solid #ccc;
+}
+
+/* Input fields right alignment */
+input[type="text"], input[type="number"], input[type="email"], select, textarea {
+  text-align: right;
+}
+
+/* Add spacing between complete line item groups */
+.items-table tbody tr.item-first-header:not(:first-child) {
+  margin-top: 5px;
 }

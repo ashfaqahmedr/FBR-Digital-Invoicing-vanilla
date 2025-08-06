@@ -3315,7 +3315,6 @@ function removeItem(itemId) {
 
 function renderItems() {
   const container = DOMElements.itemsBody
-  container.style.backgroundColor = "#cee408ff"
   container.innerHTML = ""
 
   items.forEach((item, index) => {
@@ -3327,12 +3326,12 @@ function renderItems() {
     const total = value + salesTaxApplicable + extraTax + furtherTax - discount
     const totalTax = salesTaxApplicable + extraTax + furtherTax
 
-    // Define color schemes for each item
+    // Define color schemes for each item with lighter colors for better text visibility
     const itemColors = [
-      { header1: "#1565c0", data1: "#e3f2fd", header2: "#0d47a1", data2: "#bbdefb" },
-      { header1: "#7b1fa2", data1: "#f3e5f5", header2: "#4a148c", data2: "#ce93d8" },
-      { header1: "#2e7d32", data1: "#e8f5e8", header2: "#1b5e20", data2: "#a5d6a7" },
-      { header1: "#e65100", data1: "#fff3e0", header2: "#bf360c", data2: "#ffcc80" }
+      { header1: "#bbdefb", data1: "#e3f2fd", header2: "#c5cae9", data2: "#e8eaf6" },
+      { header1: "#e1bee7", data1: "#f3e5f5", header2: "#ce93d8", data2: "#f3e5f5" },
+      { header1: "#c8e6c9", data1: "#e8f5e8", header2: "#a5d6a7", data2: "#e8f5e8" },
+      { header1: "#ffcc80", data1: "#fff3e0", header2: "#ffcc80", data2: "#fff3e0" }
     ]
     const colors = itemColors[index % itemColors.length]
 
@@ -3386,16 +3385,28 @@ function renderItems() {
             .join("")
         : '<option value="">Select SRO Schedule First</option>'
 
+    // Create individual container for each line item
+    const itemContainer = document.createElement("div")
+    itemContainer.className = "line-item-container"
+    itemContainer.style.backgroundColor = colors.data1
+    itemContainer.style.borderRadius = "8px"
+    itemContainer.style.marginBottom = "12px"
+    itemContainer.style.padding = "4px"
+    itemContainer.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.08)"
+    
+    const itemTable = document.createElement("table")
+    itemTable.className = "item-table"
+    itemTable.style.width = "100%"
+    itemTable.style.borderCollapse = "separate"
+    itemTable.style.borderSpacing = "0"
+    
+    const commonStyle = "width: 100%; padding: 2px; font-size: 0.90rem;"
+    
     // First header row for this item
     const firstHeaderRow = document.createElement("tr")
-    // firstHeaderRow.className = "item-first-header"
+    firstHeaderRow.className = "item-first-header"
     firstHeaderRow.style.backgroundColor = colors.header1
     firstHeaderRow.style.fontWeight = "bold"
-    firstHeaderRow.style.border = "5px solid #075e1de5"
-    // firstHeaderRow.style.borderColor = "#ec0e0ee5"
- 
-
-   const commonStyle = "width: 100%; padding: 2px; font-size: 0.90rem;"
     firstHeaderRow.innerHTML = `
       <th>Search Product</th>
       <th>HS Code</th>
@@ -3407,16 +3418,14 @@ function renderItems() {
       <th>Tax Rate</th>
       <th>Tax Amount</th>
       <th>Total Value</th>
-      <th>Actions</th>
+      <th style="padding: 5px; text-align: center;">Actions</th>
     `
-    container.appendChild(firstHeaderRow)
+    itemTable.appendChild(firstHeaderRow)
 
     // First data row with basic item details
     const firstDataRow = document.createElement("tr")
-    // firstDataRow.style.borderColor = "#ec0e0ee5"
-    firstDataRow.style.border = "5px solid #ec0e0ee5"
-    // firstDataRow.className = "item-first-data"
-    firstDataRow.style.backgroundColor = colors.data1
+    firstDataRow.className = "item-first-data"
+    firstDataRow.style.backgroundColor = "transparent"
     firstDataRow.innerHTML = `
       <td style="width: 120px; position: relative;">
         <input type="text" 
@@ -3439,7 +3448,7 @@ function renderItems() {
         <div id="hsCodeSuggestions-${item.id}" class="hs-suggestions" style="display: none;"></div>
       </td>
       <td>
-        <textarea rows="1" onchange="updateItem('${item.id}', 'description', this.value)" readonly style="${commonStyle}; resize: vertical; background: #f8f9fa;">${item.description}</textarea>
+        <textarea rows="1" onchange="updateItem('${item.id}', 'description', this.value)" readonly style="${commonStyle}; resize: vertical; border: none; border-radius: 5px;">${item.description}</textarea>
       </td>
       <td>
         <select onchange="updateItem('${item.id}', 'saleType', this.value)" 
@@ -3475,15 +3484,13 @@ function renderItems() {
         </button>
       </td>
     `
-    container.appendChild(firstDataRow)
+    itemTable.appendChild(firstDataRow)
 
     // Second header row for this item
     const secondHeaderRow = document.createElement("tr")
-    // secondHeaderRow.className = "item-second-header"
+    secondHeaderRow.className = "item-second-header"
     secondHeaderRow.style.backgroundColor = colors.header2
     secondHeaderRow.style.fontWeight = "bold"
-    
-    secondHeaderRow.style.border = "5px solid #c512f1ff"
     secondHeaderRow.innerHTML = `
       <th>SRO Schedule</th>
       <th>SRO Item Serial</th>
@@ -3496,14 +3503,12 @@ function renderItems() {
       
       <th>Total Tax</th>
     `
-    container.appendChild(secondHeaderRow)
+    itemTable.appendChild(secondHeaderRow)
 
     // Second data row for additional tax fields and SRO details
     const secondDataRow = document.createElement("tr")
-    // secondDataRow.className = "item-second-data"
-    secondDataRow.style.backgroundColor = colors.data2
-    // secondDataRow.style.borderBottom = "5px solid #ffffff"
-    secondDataRow.style.border = "5px solid #061c58ff"
+    secondDataRow.className = "item-second-data"
+    secondDataRow.style.backgroundColor = "transparent"
     secondDataRow.innerHTML = `
     <td style="padding: 2px;">
         <select onchange="updateItem('${item.id}', 'sroSchedule', this.value)" 
@@ -3549,9 +3554,11 @@ function renderItems() {
       
       <td style="font-weight: bold; color: var(--fbr-dark); padding: 2px; font-size: 0.8rem; text-align: center;">${totalTax.toFixed(2)}</td>
     `
-    container.appendChild(secondDataRow)
-
-    // No additional row needed as fields are now in main row
+    itemTable.appendChild(secondDataRow)
+    
+    // Append table to item container and container to main container
+    itemContainer.appendChild(itemTable)
+    container.appendChild(itemContainer)
   })
 }
 
