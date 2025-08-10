@@ -2575,10 +2575,11 @@ input[type="text"], input[type="number"], input[type="email"], select, textarea 
 }
 
 .analytics-card.smart-card .card-metrics {
-  padding: 16px;
+  padding: 5px;
   display: flex;
+  
   flex-direction: column;
-  gap: 8px;
+  gap: 5px;
   flex: 1;
 }
 
@@ -2588,7 +2589,7 @@ input[type="text"], input[type="number"], input[type="email"], select, textarea 
   gap: 8px;
   align-items: center;
   padding: 6px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #bd1010;
 }
 
 .analytics-card.smart-card .metric-row:last-child {
@@ -2772,9 +2773,9 @@ input[type="text"], input[type="number"], input[type="email"], select, textarea 
 
 .analytics-card.smart-card .count-section {
   text-align: center;
-  padding: 8px 0;
+  padding: 5px 0;
   border-bottom: 2px solid var(--fbr-blue);
-  margin-bottom: 8px;
+  margin-bottom: 5px;
 }
 
 .analytics-card.smart-card .count-value {
@@ -2890,7 +2891,7 @@ input[type="text"], input[type="number"], input[type="email"], select, textarea 
 }
 /* Updated Smart Analytics Cards - Smaller Height & Color Coding */
 .analytics-card.smart-card .card-metrics {
-  padding: 10px 16px;
+  padding: 5px;
   display: flex;
   flex-direction: column;
   gap: 6px;

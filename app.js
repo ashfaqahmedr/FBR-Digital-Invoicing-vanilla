@@ -6149,9 +6149,104 @@ let globalProducts = [];
 let globalSellers = [];
 let globalBuyers = [];
 
+// Create dashboard structure dynamically
+function createDashboardStructure() {
+  let dashboardContainer = document.getElementById('dashboard-content');
+  if (!dashboardContainer) {
+    dashboardContainer = document.createElement('div');
+    dashboardContainer.id = 'dashboard-content';
+    dashboardContainer.className = 'dashboard-container';
+    const dashboardTab = document.getElementById('dashboard-tab');
+    if (dashboardTab) dashboardTab.appendChild(dashboardContainer);
+  }
+  
+  dashboardContainer.innerHTML = `
+    <div class="analytics-cards">
+      ${createTimeAnalyticsHTML()}
+    </div>
+    <div class="dashboard-row">
+      <div class="dashboard-widget">
+        <div class="widget-header">
+          <h3><i class="fas fa-clock"></i> Latest Invoices</h3>
+          <button class="btn btn-sm btn-primary" onclick="switchToInvoicesTab()">
+            <i class="fas fa-eye"></i> View All
+          </button>
+        </div>
+        <div class="widget-content">
+          <div id="latestInvoices"></div>
+        </div>
+      </div>
+      <div class="dashboard-widget">
+        <div class="widget-header">
+          <h3><i class="fas fa-star"></i> Top Products</h3>
+          <button class="btn btn-sm btn-primary" onclick="switchToProductsTab()">
+            <i class="fas fa-eye"></i> View All
+          </button>
+        </div>
+        <div class="widget-content">
+          <div id="topProducts"></div>
+        </div>
+      </div>
+    </div>
+    <div class="dashboard-row">
+      <div class="dashboard-widget">
+        <div class="widget-header">
+          <h3><i class="fas fa-trophy"></i> Top Buyers</h3>
+          <button class="btn btn-sm btn-primary" onclick="switchToBuyersTab()">
+            <i class="fas fa-eye"></i> View All
+          </button>
+        </div>
+        <div class="widget-content">
+          <div id="topBuyers"></div>
+        </div>
+      </div>
+      <div class="dashboard-widget">
+        <div class="widget-header">
+          <h3><i class="fas fa-chart-pie"></i> Invoice Status</h3>
+        </div>
+        <div class="widget-content">
+          <div id="statusChart"></div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  return dashboardContainer;
+}
+
+// Create time analytics HTML structure
+function createTimeAnalyticsHTML() {
+  const periods = [
+    { key: 'today', label: 'Today', icon: 'fas fa-calendar-day' },
+    { key: 'yesterday', label: 'Yesterday', icon: 'fas fa-calendar-minus' },
+    { key: 'thisWeek', label: 'This Week', icon: 'fas fa-calendar-week' },
+    { key: 'lastWeek', label: 'Last Week', icon: 'fas fa-calendar-alt' },
+    { key: 'thisMonth', label: 'This Month', icon: 'fas fa-calendar' },
+    { key: 'lastMonth', label: 'Last Month', icon: 'fas fa-calendar-times' },
+    { key: 'thisYear', label: 'This Year', icon: 'fas fa-calendar-check' },
+    { key: 'lastYear', label: 'Last Year', icon: 'fas fa-history' }
+  ];
+  
+  return periods.map(period => `
+    <div class="analytics-card smart-card">
+      <div class="card-header">
+        <h4>${period.label}</h4>
+      </div>
+      <div class="card-metrics">
+        <span id="${period.key}Count" class="count-value">0</span>
+        <span class="count-label">Invoices</span>
+      </div>
+      <div class="totals-section">
+        <span id="${period.key}Amount" class="total-value">PKR 0</span>
+        <span id="${period.key}Tax" class="tax-value">PKR 0</span>
+      </div>
+    </div>
+  `).join('');
+}
+
 // Update dashboard with current data
 function updateDashboard() {
-    
+    createDashboardStructure();
   // Update time-based analytics
   updateTimeBasedAnalytics();
   
@@ -6614,111 +6709,6 @@ document.addEventListener('DOMContentLoaded', () => {
 let productSortField = '';
 let productSortDirection = 'asc';
 
-
-
-
-// Update populateProductsTable to include sorting
-// async function populateProductsTable() {
-//   let products = await dbGetAll(STORE_NAMES.products);
-//   const tbody = document.getElementById('productsTableBody');
-  
-//   if (!tbody) return;
-  
-//   // Get filter values
-//   const searchTerm = document.getElementById('productSearch')?.value || '';
-//   const typeFilter = document.getElementById('productTypeFilter')?.value || 'all';
-//   const statusFilter = document.getElementById('productStatusFilter')?.value || 'all';
-//   const perPage = document.getElementById('productsPerPage')?.value || '20';
-  
-//   // Apply filters
-//   const filteredProducts = filterProducts(searchProducts(products, searchTerm), typeFilter, statusFilter);
-  
-//   // Apply sorting
-//   if (productSortField) {
-//     filteredProducts.sort((a, b) => {
-//       let aVal = a[productSortField] || '';
-//       let bVal = b[productSortField] || '';
-      
-//       if (productSortField === 'purchaseRate' || productSortField === 'saleRate' || productSortField === 'taxRate' || productSortField === 'openingStock') {
-//         aVal = parseFloat(aVal) || 0;
-//         bVal = parseFloat(bVal) || 0;
-//         return productSortDirection === 'asc' ? aVal - bVal : bVal - aVal;
-//       } else {
-//         aVal = aVal.toString().toLowerCase();
-//         bVal = bVal.toString().toLowerCase();
-//         return productSortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-//       }
-//     });
-//   }
-  
-//   // Apply pagination
-//   const paginatedData = paginate(filteredProducts, currentProductsPage, perPage);
-  
-//   tbody.innerHTML = '';
-  
-//   if (!filteredProducts || filteredProducts.length === 0) {
-//     const row = document.createElement('tr');
-//     row.innerHTML = `
-//       <td colspan="10" style="text-align: center;">
-//         No products found
-//         <button class="btn btn-primary" onclick="openAddProductModal()">Add Product</button>
-//       </td>
-//     `;
-//     tbody.appendChild(row);
-//     const paginationInfo = document.getElementById('productsPaginationInfo');
-//     if (paginationInfo) {
-//       paginationInfo.textContent = 'Showing 0-0 of 0 items';
-//     }
-//     return;
-//   }
-  
-//   paginatedData.data.forEach(product => {
-//     const row = document.createElement('tr');
-//     const isGoods = product.productType && !product.productType.toLowerCase().includes('service');
-//     const stockDisplay = isGoods ? 
-//       `${product.openingStock || 0}${(product.openingStock || 0) <= (product.lowStock || 0) ? ' <span style="color: red;">⚠️</span>' : ''}` : 
-//       '';
-    
-//     row.innerHTML = `
-//       <td>${product.hsCode || ''}</td>
-//       <td>${product.productName || ''}</td>
-//       <td>${product.productType || ''}</td>
-//       <td>${product.uom || ''}</td>
-//       <td>PKR ${(product.purchaseRate || 0).toFixed(2)}</td>
-//       <td>PKR ${(product.saleRate || 0).toFixed(2)}</td>
-//       <td>${(product.taxRate || 0).toFixed(2)}%</td>
-//       <td>${stockDisplay}</td>
-//       <td><span class="status-badge ${product.status === 'Active' ? 'status-active' : 'status-inactive'}">${product.status || 'Active'}</span></td>
-//       <td class="action-cell">
-//         <button class="btn btn-sm btn-primary" onclick="addProductToInvoiceFromTable('${product.id}')" title="Add to Invoice">
-//           <i class="fas fa-plus"></i>
-//         </button>
-//         <button class="btn btn-sm btn-warning" onclick="editProduct('${product.id}')">
-//           <i class="fas fa-edit"></i>
-//         </button>
-//         <button class="btn btn-sm btn-danger" onclick="deleteProduct('${product.id}')">
-//           <i class="fas fa-trash"></i>
-//         </button>
-//       </td>
-//     `;
-//     tbody.appendChild(row);
-//   });
-  
-//   // Update pagination info and controls
-//   const paginationInfo = document.getElementById('productsPaginationInfo');
-//   if (paginationInfo) {
-//     if (perPage === 'all') {
-//       paginationInfo.textContent = `Showing 1-${filteredProducts.length} of ${filteredProducts.length} items`;
-//     } else {
-//       paginationInfo.textContent = `Showing ${paginatedData.startIndex}-${paginatedData.endIndex} of ${paginatedData.totalItems} items`;
-//     }
-//   }
-  
-//   createPaginationControls('productsPaginationControls', paginatedData.currentPage, paginatedData.totalPages, (page) => {
-//     currentProductsPage = page;
-//     populateProductsTable();
-//   });
-// }
 
 // Sort products function
 function sortProducts(field) {
