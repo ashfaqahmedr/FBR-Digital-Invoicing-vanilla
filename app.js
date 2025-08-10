@@ -6679,6 +6679,8 @@ function updateThemeDependentElements(theme) {
   document.documentElement.style.setProperty('--fbr-dark', isDark ? '#e0e0e0' : '#343a40');
 }
 
+
+
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize theme from localStorage or default to light
   const savedTheme = localStorage.getItem('theme') || 'light';
@@ -6705,24 +6707,11 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Product modal is now initialized in initProductModal()
 });
-// Product sorting variables
-let productSortField = '';
-let productSortDirection = 'asc';
 
 
-// Sort products function
-function sortProducts(field) {
-  if (productSortField === field) {
-    productSortDirection = productSortDirection === 'asc' ? 'desc' : 'asc';
-  } else {
-    productSortField = field;
-    productSortDirection = 'asc';
-  }
-  populateProductsTable();
-}
 
 // Populate products table with pagination
-async function populateProductsTable() {
+window.populateProductsTable = async function populateProductsTable() {
   let products = await dbGetAll(STORE_NAMES.products);
   const tbody = document.getElementById('productsTableBody');
   
@@ -6735,7 +6724,30 @@ async function populateProductsTable() {
   const perPage = document.getElementById('productsPerPage')?.value || '20';
   
   // Apply filters
-  const filteredProducts = filterProducts(searchProducts(products, searchTerm), typeFilter, statusFilter);
+  let filteredProducts = filterProducts(searchProducts(products, searchTerm), typeFilter, statusFilter);
+  
+  // Apply sorting
+  if (window.productSortField) {
+    filteredProducts.sort((a, b) => {
+      let aVal = a[window.productSortField] || '';
+      let bVal = b[window.productSortField] || '';
+      
+      // Handle numeric fields
+      if (['purchaseRate', 'saleRate', 'taxRate', 'openingStock'].includes(window.productSortField)) {
+        aVal = parseFloat(aVal) || 0;
+        bVal = parseFloat(bVal) || 0;
+      } else {
+        aVal = aVal.toString().toLowerCase();
+        bVal = bVal.toString().toLowerCase();
+      }
+      
+      if (window.productSortDirection === 'asc') {
+        return aVal > bVal ? 1 : -1;
+      } else {
+        return aVal < bVal ? 1 : -1;
+      }
+    });
+  }
   
   // Apply pagination
   const paginatedData = paginate(filteredProducts, currentProductsPage, perPage);
