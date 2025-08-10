@@ -93,47 +93,187 @@
       <div class="dashboard-container">
         <!-- Analytics Cards -->
         <div class="analytics-cards">
-          <div class="analytics-card">
-            <div class="card-icon">
-              <i class="fas fa-file-invoice-dollar"></i>
+          <div class="analytics-card smart-card">
+            <div class="card-header">
+              <i class="fas fa-calendar-day card-icon"></i>
+              <h4>Today</h4>
             </div>
-            <div class="card-content">
-              <h3 id="totalInvoices">0</h3>
-              <p>Total Invoices</p>
-              <small id="invoicesChange">+0 this month</small>
-            </div>
-          </div>
-          
-          <div class="analytics-card">
-            <div class="card-icon">
-              <i class="fas fa-money-bill-wave"></i>
-            </div>
-            <div class="card-content">
-              <h3 id="totalAmount">PKR 0</h3>
-              <p>Total Amount</p>
-              <small id="amountChange">+PKR 0 this month</small>
-            </div>
-          </div>
-          
-          <div class="analytics-card">
-            <div class="card-icon">
-              <i class="fas fa-receipt"></i>
-            </div>
-            <div class="card-content">
-              <h3 id="totalTaxes">PKR 0</h3>
-              <p>Total Taxes</p>
-              <small id="taxesChange">+PKR 0 this month</small>
+            <div class="card-metrics">
+              <div class="count-section">
+                <span class="count-value" id="todayCount">0</span>
+                <span class="count-label">Invoices</span>
+              </div>
+              <div class="totals-section">
+                <div class="total-item">
+                  <span class="total-label">Total Amount</span>
+                  <span class="total-value amount" id="todayAmount">PKR 0</span>
+                </div>
+                <div class="total-item">
+                  <span class="total-label">Total Tax</span>
+                  <span class="total-value tax" id="todayTax">PKR 0</span>
+                </div>
+              </div>
             </div>
           </div>
           
-          <div class="analytics-card">
-            <div class="card-icon">
-              <i class="fas fa-users"></i>
+          <div class="analytics-card smart-card">
+            <div class="card-header">
+              <i class="fas fa-calendar-minus card-icon"></i>
+              <h4>Yesterday</h4>
             </div>
-            <div class="card-content">
-              <h3 id="totalBuyers">0</h3>
-              <p>Total Buyers</p>
-              <small id="buyersChange">+0 this month</small>
+            <div class="card-metrics">
+              <div class="count-section">
+                <span class="count-value" id="yesterdayCount">0</span>
+                <span class="count-label">Invoices</span>
+              </div>
+              <div class="totals-section">
+                <div class="total-item">
+                  <span class="total-label">Total Amount</span>
+                  <span class="total-value amount" id="yesterdayAmount">PKR 0</span>
+                </div>
+                <div class="total-item">
+                  <span class="total-label">Total Tax</span>
+                  <span class="total-value tax" id="yesterdayTax">PKR 0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="analytics-card smart-card">
+            <div class="card-header">
+              <i class="fas fa-calendar-week card-icon"></i>
+              <h4>This Week</h4>
+            </div>
+            <div class="card-metrics">
+              <div class="count-section">
+                <span class="count-value" id="thisWeekCount">0</span>
+                <span class="count-label">Invoices</span>
+              </div>
+              <div class="totals-section">
+                <div class="total-item">
+                  <span class="total-label">Total Amount</span>
+                  <span class="total-value amount" id="thisWeekAmount">PKR 0</span>
+                </div>
+                <div class="total-item">
+                  <span class="total-label">Total Tax</span>
+                  <span class="total-value tax" id="thisWeekTax">PKR 0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="analytics-card smart-card">
+            <div class="card-header">
+              <i class="fas fa-calendar-alt card-icon"></i>
+              <h4>Last Week</h4>
+            </div>
+            <div class="card-metrics">
+              <div class="count-section">
+                <span class="count-value" id="lastWeekCount">0</span>
+                <span class="count-label">Invoices</span>
+              </div>
+              <div class="totals-section">
+                <div class="total-item">
+                  <span class="total-label">Total Amount</span>
+                  <span class="total-value amount" id="lastWeekAmount">PKR 0</span>
+                </div>
+                <div class="total-item">
+                  <span class="total-label">Total Tax</span>
+                  <span class="total-value tax" id="lastWeekTax">PKR 0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="analytics-card smart-card">
+            <div class="card-header">
+              <i class="fas fa-calendar card-icon"></i>
+              <h4>This Month</h4>
+            </div>
+            <div class="card-metrics">
+              <div class="count-section">
+                <span class="count-value" id="thisMonthCount">0</span>
+                <span class="count-label">Invoices</span>
+              </div>
+              <div class="totals-section">
+                <div class="total-item">
+                  <span class="total-label">Total Amount</span>
+                  <span class="total-value amount" id="thisMonthAmount">PKR 0</span>
+                </div>
+                <div class="total-item">
+                  <span class="total-label">Total Tax</span>
+                  <span class="total-value tax" id="thisMonthTax">PKR 0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="analytics-card smart-card">
+            <div class="card-header">
+              <i class="fas fa-calendar-times card-icon"></i>
+              <h4>Last Month</h4>
+            </div>
+            <div class="card-metrics">
+              <div class="count-section">
+                <span class="count-value" id="lastMonthCount">0</span>
+                <span class="count-label">Invoices</span>
+              </div>
+              <div class="totals-section">
+                <div class="total-item">
+                  <span class="total-label">Total Amount</span>
+                  <span class="total-value amount" id="lastMonthAmount">PKR 0</span>
+                </div>
+                <div class="total-item">
+                  <span class="total-label">Total Tax</span>
+                  <span class="total-value tax" id="lastMonthTax">PKR 0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="analytics-card smart-card">
+            <div class="card-header">
+              <i class="fas fa-calendar-check card-icon"></i>
+              <h4>This Year</h4>
+            </div>
+            <div class="card-metrics">
+              <div class="count-section">
+                <span class="count-value" id="thisYearCount">0</span>
+                <span class="count-label">Invoices</span>
+              </div>
+              <div class="totals-section">
+                <div class="total-item">
+                  <span class="total-label">Total Amount</span>
+                  <span class="total-value amount" id="thisYearAmount">PKR 0</span>
+                </div>
+                <div class="total-item">
+                  <span class="total-label">Total Tax</span>
+                  <span class="total-value tax" id="thisYearTax">PKR 0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="analytics-card smart-card">
+            <div class="card-header">
+              <i class="fas fa-history card-icon"></i>
+              <h4>Last Year</h4>
+            </div>
+            <div class="card-metrics">
+              <div class="count-section">
+                <span class="count-value" id="lastYearCount">0</span>
+                <span class="count-label">Invoices</span>
+              </div>
+              <div class="totals-section">
+                <div class="total-item">
+                  <span class="total-label">Total Amount</span>
+                  <span class="total-value amount" id="lastYearAmount">PKR 0</span>
+                </div>
+                <div class="total-item">
+                  <span class="total-label">Total Tax</span>
+                  <span class="total-value tax" id="lastYearTax">PKR 0</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>

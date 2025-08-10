@@ -6151,13 +6151,61 @@ let globalBuyers = [];
 
 // Update dashboard with current data
 function updateDashboard() {
-  const totalInvoices = globalInvoices.length;
+    
+  // Update time-based analytics
+  updateTimeBasedAnalytics();
   
+  // Update dashboard widgets
+  updateLatestInvoices();
+  updateTopProducts();
+  updateTopBuyers();
+  updateInvoiceStatus();
+}
+
+// Helper function to get date ranges
+function getDateRanges() {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+  
+  const thisWeekStart = new Date(today.getTime() - (today.getDay() * 24 * 60 * 60 * 1000));
+  const lastWeekStart = new Date(thisWeekStart.getTime() - (7 * 24 * 60 * 60 * 1000));
+  const lastWeekEnd = new Date(thisWeekStart.getTime() - 1);
+  
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(thisMonthStart.getTime() - 1);
+  
+  const thisYearStart = new Date(now.getFullYear(), 0, 1);
+  const lastYearStart = new Date(now.getFullYear() - 1, 0, 1);
+  const lastYearEnd = new Date(thisYearStart.getTime() - 1);
+  
+  return {
+    today: { start: today, end: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1) },
+    yesterday: { start: yesterday, end: new Date(yesterday.getTime() + 24 * 60 * 60 * 1000 - 1) },
+    thisWeek: { start: thisWeekStart, end: now },
+    lastWeek: { start: lastWeekStart, end: lastWeekEnd },
+    thisMonth: { start: thisMonthStart, end: now },
+    lastMonth: { start: lastMonthStart, end: lastMonthEnd },
+    thisYear: { start: thisYearStart, end: now },
+    lastYear: { start: lastYearStart, end: lastYearEnd }
+  };
+}
+
+// Filter invoices by date range
+function filterInvoicesByDateRange(invoices, startDate, endDate) {
+  return invoices.filter(inv => {
+    const invDate = new Date(inv.dated || inv.invoiceDate || 0);
+    return invDate >= startDate && invDate <= endDate;
+  });
+}
+
+// Calculate analytics for a period
+function calculatePeriodAnalytics(invoices) {
   let totalAmount = 0;
   let totalTaxes = 0;
   
-  globalInvoices.forEach(inv => {
-    // Calculate total amount
+  invoices.forEach(inv => {
     let invAmount = parseFloat(inv.totalAmount) || 0;
     if (invAmount === 0) {
       const items = inv.items || inv.invoicePayload?.items || [];
@@ -6165,24 +6213,57 @@ function updateDashboard() {
     }
     totalAmount += invAmount;
     
-    // Calculate total taxes from invoice items
     const items = inv.items || inv.invoicePayload?.items || [];
     const invTaxes = items.reduce((sum, item) => sum + (parseFloat(item.salesTaxApplicable) || 0), 0);
     totalTaxes += invTaxes;
   });
   
-  const totalBuyers = globalBuyers.length;
+  return { count: invoices.length, amount: totalAmount, taxes: totalTaxes };
+}
 
-  document.getElementById('totalInvoices').textContent = totalInvoices;
-  document.getElementById('totalAmount').textContent = `PKR ${totalAmount.toLocaleString()}`;
-  document.getElementById('totalTaxes').textContent = `PKR ${totalTaxes.toLocaleString()}`;
-  document.getElementById('totalBuyers').textContent = totalBuyers;
+// Update time-based analytics
+function updateTimeBasedAnalytics() {
+  const ranges = getDateRanges();
   
-  // Update dashboard widgets
-  updateLatestInvoices();
-  updateTopProducts();
-  updateTopBuyers();
-  updateInvoiceStatus();
+  const periods = [
+    { key: 'today', range: ranges.today },
+    { key: 'yesterday', range: ranges.yesterday },
+    { key: 'thisWeek', range: ranges.thisWeek },
+    { key: 'lastWeek', range: ranges.lastWeek },
+    { key: 'thisMonth', range: ranges.thisMonth },
+    { key: 'lastMonth', range: ranges.lastMonth },
+    { key: 'thisYear', range: ranges.thisYear },
+    { key: 'lastYear', range: ranges.lastYear }
+  ];
+  
+  periods.forEach(period => {
+    const filteredInvoices = filterInvoicesByDateRange(globalInvoices, period.range.start, period.range.end);
+    const analytics = calculatePeriodAnalytics(filteredInvoices);
+    
+    const countElement = document.getElementById(`${period.key}Count`);
+    const amountElement = document.getElementById(`${period.key}Amount`);
+    const taxElement = document.getElementById(`${period.key}Tax`);
+    
+    if (countElement) {
+      countElement.textContent = analytics.count;
+      countElement.className = analytics.count > 0 ? 'count-value has-invoices' : 'count-value no-invoices';
+    }
+    if (amountElement) amountElement.textContent = `PKR ${analytics.amount.toLocaleString()}`;
+    if (taxElement) taxElement.textContent = `PKR ${analytics.taxes.toLocaleString()}`;
+  });
+}
+
+// Navigation helper functions
+function switchToInvoicesTab() {
+  document.querySelector('[data-tab="invoices-tab"]').click();
+}
+
+function switchToProductsTab() {
+  document.querySelector('[data-tab="products-tab"]').click();
+}
+
+function switchToBuyersTab() {
+  document.querySelector('[data-tab="buyers-tab"]').click();
 }
 
 // Latest Invoices - Top 10 by date
