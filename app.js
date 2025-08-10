@@ -2479,7 +2479,7 @@ window.addProductToInvoiceFromTable = async (productId) => {
       originProvince: product.originProvince
     });
     switchToCreateInvoiceTab();
-    showToast('success', 'Product Added', 'Product has been added to the invoice');
+    // showToast('success', 'Product Added', 'Product has been added to the invoice');
   } catch (error) {
     showToast('error', 'Add Failed', 'Failed to add product to invoice: ' + error.message);
   }
@@ -2577,90 +2577,6 @@ function createPaginationControls(containerId, currentPage, totalPages, onPageCh
   container.appendChild(nextBtn);
 }
 
-// Populate products table with pagination
-async function populateProductsTable() {
-  let products = await dbGetAll(STORE_NAMES.products);
-  const tbody = document.getElementById('productsTableBody');
-  
-  if (!tbody) return;
-  
-  // Get filter values
-  const searchTerm = document.getElementById('productSearch')?.value || '';
-  const typeFilter = document.getElementById('productTypeFilter')?.value || 'all';
-  const statusFilter = document.getElementById('productStatusFilter')?.value || 'all';
-  const perPage = document.getElementById('productsPerPage')?.value || '20';
-  
-  // Apply filters
-  const filteredProducts = filterProducts(searchProducts(products, searchTerm), typeFilter, statusFilter);
-  
-  // Apply pagination
-  const paginatedData = paginate(filteredProducts, currentProductsPage, perPage);
-  
-  tbody.innerHTML = '';
-  
-  if (!filteredProducts || filteredProducts.length === 0) {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td colspan="10" style="text-align: center;">
-        No products found
-        <button class="btn btn-primary" onclick="openAddProductModal()">Add Product</button>
-      </td>
-    `;
-    tbody.appendChild(row);
-    const paginationInfo = document.getElementById('productsPaginationInfo');
-    if (paginationInfo) {
-      paginationInfo.textContent = 'Showing 0-0 of 0 items';
-    }
-    return;
-  }
-  
-  paginatedData.data.forEach(product => {
-    const row = document.createElement('tr');
-    const isGoods = product.productType && !product.productType.toLowerCase().includes('service');
-    const stockDisplay = isGoods ? 
-      `${product.openingStock || 0}${(product.openingStock || 0) <= (product.lowStock || 0) ? ' <span style="color: red;">⚠️</span>' : ''}` : 
-      '';
-    
-    row.innerHTML = `
-      <td>${product.hsCode || ''}</td>
-      <td>${product.productName || ''}</td>
-      <td>${product.productType || ''}</td>
-      <td>${product.uom || ''}</td>
-      <td>PKR ${(product.purchaseRate || 0).toFixed(2)}</td>
-      <td>PKR ${(product.saleRate || 0).toFixed(2)}</td>
-      <td>${(product.taxRate || 0).toFixed(2)}%</td>
-      <td>${stockDisplay}</td>
-      <td><span class="status-badge ${product.status === 'Active' ? 'status-active' : 'status-inactive'}">${product.status || 'Active'}</span></td>
-      <td class="action-cell">
-        <button class="btn btn-sm btn-primary" onclick="addProductToInvoiceFromTable('${product.id}')" title="Add to Invoice">
-          <i class="fas fa-plus"></i>
-        </button>
-        <button class="btn btn-sm btn-warning" onclick="editProduct('${product.id}')">
-          <i class="fas fa-edit"></i>
-        </button>
-        <button class="btn btn-sm btn-danger" onclick="deleteProduct('${product.id}')">
-          <i class="fas fa-trash"></i>
-        </button>
-      </td>
-    `;
-    tbody.appendChild(row);
-  });
-  
-  // Update pagination info and controls
-  const paginationInfo = document.getElementById('productsPaginationInfo');
-  if (paginationInfo) {
-    if (perPage === 'all') {
-      paginationInfo.textContent = `Showing 1-${filteredProducts.length} of ${filteredProducts.length} items`;
-    } else {
-      paginationInfo.textContent = `Showing ${paginatedData.startIndex}-${paginatedData.endIndex} of ${paginatedData.totalItems} items`;
-    }
-  }
-  
-  createPaginationControls('productsPaginationControls', paginatedData.currentPage, paginatedData.totalPages, (page) => {
-    currentProductsPage = page;
-    populateProductsTable();
-  });
-}
 
 // Initialize product filters
 function initProductFilters() {
@@ -5994,16 +5910,6 @@ function sortInvoices(field) {
 
 window.sortInvoices = sortInvoices;
 
-// Function to calculate total amount from line items
-function calculateTotalFromLineItems(items) {
-  if (!items || !Array.isArray(items) || items.length === 0) {
-    return 0;
-  }
-  
-  return items.reduce((total, item) => {
-    return total + (parseFloat(item.totalValues) || 0);
-  }, 0);
-}
 
 // Populate invoices table
 async function populateInvoicesTable() {
@@ -6213,8 +6119,178 @@ function formatDate(dateString) {
   });
 }
 
+// Helper function to format date for dashboard display
+// function formatDateForDisplay(dateString) {
+//   if (!dateString) return 'N/A';
+//   const date = new Date(dateString);
+//   return date.toLocaleDateString('en-US', {
+//     month: 'short',
+//     day: 'numeric',
+//     year: 'numeric'
+//   });
+// }
 
-// Initialize application
+
+// Function to calculate total amount from line items
+function calculateTotalFromLineItems(items) {
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    return 0;
+  }
+  
+  return items.reduce((total, item) => {
+    return total + (parseFloat(item.totalValues) || 0);
+  }, 0);
+}
+
+
+// Global data stores
+let globalInvoices = [];
+let globalProducts = [];
+let globalSellers = [];
+let globalBuyers = [];
+
+// Update dashboard with current data
+function updateDashboard() {
+  const totalInvoices = globalInvoices.length;
+  
+  let totalAmount = 0;
+  let totalTaxes = 0;
+  
+  globalInvoices.forEach(inv => {
+    // Calculate total amount
+    let invAmount = parseFloat(inv.totalAmount) || 0;
+    if (invAmount === 0) {
+      const items = inv.items || inv.invoicePayload?.items || [];
+      invAmount = calculateTotalFromLineItems(items);
+    }
+    totalAmount += invAmount;
+    
+    // Calculate total taxes from invoice items
+    const items = inv.items || inv.invoicePayload?.items || [];
+    const invTaxes = items.reduce((sum, item) => sum + (parseFloat(item.salesTaxApplicable) || 0), 0);
+    totalTaxes += invTaxes;
+  });
+  
+  const totalBuyers = globalBuyers.length;
+
+  document.getElementById('totalInvoices').textContent = totalInvoices;
+  document.getElementById('totalAmount').textContent = `PKR ${totalAmount.toLocaleString()}`;
+  document.getElementById('totalTaxes').textContent = `PKR ${totalTaxes.toLocaleString()}`;
+  document.getElementById('totalBuyers').textContent = totalBuyers;
+  
+  // Update dashboard widgets
+  updateLatestInvoices();
+  updateTopProducts();
+  updateTopBuyers();
+  updateInvoiceStatus();
+}
+
+// Latest Invoices - Top 10 by date
+function updateLatestInvoices() {
+  const latest = globalInvoices
+    .sort((a, b) => new Date(b.dated || b.invoiceDate || 0) - new Date(a.dated || a.invoiceDate || 0))
+    .slice(0, 10);
+  
+  const container = document.getElementById('latestInvoices');
+  if (!container) return;
+  
+  container.innerHTML = latest.map(inv => {
+    const amount = parseFloat(inv.totalAmount) || calculateTotalFromLineItems(inv.items || inv.invoicePayload?.items || []);
+    const status = inv.invoiceNumber ? 'Submitted' : 'Draft';
+    return `
+      <div class="invoice-item-grid">
+        <span class="grid-date">${formatDateForDisplay(inv.dated || inv.invoiceDate)}</span>
+        <span class="grid-ref">${inv.invoiceRefNo || inv.invoicePayload?.invoiceRefNo || 'N/A'}</span>
+        <span class="grid-amount">PKR ${amount.toFixed(2)}</span>
+        <span class="grid-status ${status.toLowerCase()}">${status}</span>
+      </div>`;
+  }).join('');
+}
+
+// Top Selling Products - Top 10 by HS Code frequency
+function updateTopProducts() {
+  const productMap = {};
+  
+  globalInvoices.forEach(inv => {
+    const items = inv.items || inv.invoicePayload?.items || [];
+    items.forEach(item => {
+      const key = item.hsCode || item.productDescription || 'Unknown';
+      if (!productMap[key]) {
+        productMap[key] = { name: item.productDescription || key, hsCode: item.hsCode, type: item.saleType || 'N/A', count: 0 };
+      }
+      productMap[key].count++;
+    });
+  });
+  
+  const topProducts = Object.values(productMap)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+  
+  const container = document.getElementById('topProducts');
+  if (!container) return;
+  
+  container.innerHTML = topProducts.map(product => `
+    <div class="product-item-grid">
+      <span class="grid-name">${product.name}</span>
+      <span class="grid-hs">${product.hsCode}</span>
+      <span class="grid-type">${product.type}</span>
+      <span class="grid-count">${product.count}</span>
+    </div>`).join('');
+}
+
+// Top Buyers - Top 10 by purchase count
+function updateTopBuyers() {
+  const buyerMap = {};
+  
+  globalInvoices.forEach(inv => {
+    const buyerName = inv.invoicePayload?.buyerBusinessName || 'Unknown';
+    const buyerNTN = inv.invoicePayload?.buyerNTNCNIC || 'N/A';
+    const key = `${buyerName}_${buyerNTN}`;
+    
+    if (!buyerMap[key]) {
+      buyerMap[key] = { name: buyerName, ntn: buyerNTN, count: 0 };
+    }
+    buyerMap[key].count++;
+  });
+  
+  const topBuyers = Object.values(buyerMap)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+  
+  const container = document.getElementById('topBuyers');
+  if (!container) return;
+  
+  container.innerHTML = topBuyers.map(buyer => `
+    <div class="buyer-item-grid">
+      <span class="grid-buyer-name">${buyer.name}</span>
+      <span class="grid-ntn">${buyer.ntn}</span>
+      <span class="grid-purchases">${buyer.count}</span>
+    </div>`).join('');
+}
+
+// Invoice Status - Top 10 status summary
+function updateInvoiceStatus() {
+  const statusMap = {};
+  
+  globalInvoices.forEach(inv => {
+    const status = inv.invoiceNumber ? 'Submitted' : 'Draft';
+    if (!statusMap[status]) {
+      statusMap[status] = 0;
+    }
+    statusMap[status]++;
+  });
+  
+  const container = document.getElementById('statusChart');
+  if (!container) return;
+  
+  container.innerHTML = Object.entries(statusMap).map(([status, count]) => `
+    <div class="status-item-grid">
+      <span class="grid-indicator ${status.toLowerCase()}"></span>
+      <span class="grid-status-name">${status}</span>
+      <span class="grid-status-count">${count}</span>
+    </div>`).join('');
+}
+
 // Initialize invoice filters
 function initInvoiceFilters() {
   const searchInput = document.getElementById('invoiceSearch');
@@ -6317,6 +6393,12 @@ async function initApp() {
   // Initialize product modal
   initProductModal();
   
+  // Load global data stores
+  globalProducts = await dbGetAll(STORE_NAMES.products);
+  globalSellers = await dbGetAll(STORE_NAMES.sellers);
+  globalInvoices = await dbGetAll(STORE_NAMES.invoices);
+  globalBuyers = await dbGetAll(STORE_NAMES.buyers);
+
   // Initialize products table
   await populateProductsTable();
   
@@ -6353,9 +6435,11 @@ async function initApp() {
   // Load buyers from IndexedDB and populate table
   await populateBuyersTable();
 
+  // Update dashboard with loaded data
+  updateDashboard();
+
   // Ensure that at least one seller is present in IndexedDB
-  const sellers = await dbGetAll(STORE_NAMES.sellers);
-  if (sellers.length === 0) {
+  if (globalSellers.length === 0) {
     showToast("error", "No Sellers", "Please add at least one seller to proceed.");
     populateProvinceSelects();
     return; // Block further initialization if no sellers
@@ -6385,10 +6469,9 @@ async function initApp() {
   await addNewItem();
   
   // Store initial app state
-  const buyers = await dbGetAll(STORE_NAMES.buyers);
   initialAppState = {
-    selectedSeller: sellers.length > 0 ? sellers[0].ntn : '',
-    selectedBuyer: buyers.length > 0 ? buyers[0].ntn : '',
+    selectedSeller: globalSellers.length > 0 ? globalSellers[0].ntn : '',
+    selectedBuyer: globalBuyers.length > 0 ? globalBuyers[0].ntn : '',
     invoiceType: 'Sale Invoice',
     currency: 'PKR'
 
@@ -6446,3 +6529,209 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Product modal is now initialized in initProductModal()
 });
+// Product sorting variables
+let productSortField = '';
+let productSortDirection = 'asc';
+
+
+
+
+// Update populateProductsTable to include sorting
+// async function populateProductsTable() {
+//   let products = await dbGetAll(STORE_NAMES.products);
+//   const tbody = document.getElementById('productsTableBody');
+  
+//   if (!tbody) return;
+  
+//   // Get filter values
+//   const searchTerm = document.getElementById('productSearch')?.value || '';
+//   const typeFilter = document.getElementById('productTypeFilter')?.value || 'all';
+//   const statusFilter = document.getElementById('productStatusFilter')?.value || 'all';
+//   const perPage = document.getElementById('productsPerPage')?.value || '20';
+  
+//   // Apply filters
+//   const filteredProducts = filterProducts(searchProducts(products, searchTerm), typeFilter, statusFilter);
+  
+//   // Apply sorting
+//   if (productSortField) {
+//     filteredProducts.sort((a, b) => {
+//       let aVal = a[productSortField] || '';
+//       let bVal = b[productSortField] || '';
+      
+//       if (productSortField === 'purchaseRate' || productSortField === 'saleRate' || productSortField === 'taxRate' || productSortField === 'openingStock') {
+//         aVal = parseFloat(aVal) || 0;
+//         bVal = parseFloat(bVal) || 0;
+//         return productSortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+//       } else {
+//         aVal = aVal.toString().toLowerCase();
+//         bVal = bVal.toString().toLowerCase();
+//         return productSortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+//       }
+//     });
+//   }
+  
+//   // Apply pagination
+//   const paginatedData = paginate(filteredProducts, currentProductsPage, perPage);
+  
+//   tbody.innerHTML = '';
+  
+//   if (!filteredProducts || filteredProducts.length === 0) {
+//     const row = document.createElement('tr');
+//     row.innerHTML = `
+//       <td colspan="10" style="text-align: center;">
+//         No products found
+//         <button class="btn btn-primary" onclick="openAddProductModal()">Add Product</button>
+//       </td>
+//     `;
+//     tbody.appendChild(row);
+//     const paginationInfo = document.getElementById('productsPaginationInfo');
+//     if (paginationInfo) {
+//       paginationInfo.textContent = 'Showing 0-0 of 0 items';
+//     }
+//     return;
+//   }
+  
+//   paginatedData.data.forEach(product => {
+//     const row = document.createElement('tr');
+//     const isGoods = product.productType && !product.productType.toLowerCase().includes('service');
+//     const stockDisplay = isGoods ? 
+//       `${product.openingStock || 0}${(product.openingStock || 0) <= (product.lowStock || 0) ? ' <span style="color: red;">⚠️</span>' : ''}` : 
+//       '';
+    
+//     row.innerHTML = `
+//       <td>${product.hsCode || ''}</td>
+//       <td>${product.productName || ''}</td>
+//       <td>${product.productType || ''}</td>
+//       <td>${product.uom || ''}</td>
+//       <td>PKR ${(product.purchaseRate || 0).toFixed(2)}</td>
+//       <td>PKR ${(product.saleRate || 0).toFixed(2)}</td>
+//       <td>${(product.taxRate || 0).toFixed(2)}%</td>
+//       <td>${stockDisplay}</td>
+//       <td><span class="status-badge ${product.status === 'Active' ? 'status-active' : 'status-inactive'}">${product.status || 'Active'}</span></td>
+//       <td class="action-cell">
+//         <button class="btn btn-sm btn-primary" onclick="addProductToInvoiceFromTable('${product.id}')" title="Add to Invoice">
+//           <i class="fas fa-plus"></i>
+//         </button>
+//         <button class="btn btn-sm btn-warning" onclick="editProduct('${product.id}')">
+//           <i class="fas fa-edit"></i>
+//         </button>
+//         <button class="btn btn-sm btn-danger" onclick="deleteProduct('${product.id}')">
+//           <i class="fas fa-trash"></i>
+//         </button>
+//       </td>
+//     `;
+//     tbody.appendChild(row);
+//   });
+  
+//   // Update pagination info and controls
+//   const paginationInfo = document.getElementById('productsPaginationInfo');
+//   if (paginationInfo) {
+//     if (perPage === 'all') {
+//       paginationInfo.textContent = `Showing 1-${filteredProducts.length} of ${filteredProducts.length} items`;
+//     } else {
+//       paginationInfo.textContent = `Showing ${paginatedData.startIndex}-${paginatedData.endIndex} of ${paginatedData.totalItems} items`;
+//     }
+//   }
+  
+//   createPaginationControls('productsPaginationControls', paginatedData.currentPage, paginatedData.totalPages, (page) => {
+//     currentProductsPage = page;
+//     populateProductsTable();
+//   });
+// }
+
+// Sort products function
+function sortProducts(field) {
+  if (productSortField === field) {
+    productSortDirection = productSortDirection === 'asc' ? 'desc' : 'asc';
+  } else {
+    productSortField = field;
+    productSortDirection = 'asc';
+  }
+  populateProductsTable();
+}
+
+// Populate products table with pagination
+async function populateProductsTable() {
+  let products = await dbGetAll(STORE_NAMES.products);
+  const tbody = document.getElementById('productsTableBody');
+  
+  if (!tbody) return;
+  
+  // Get filter values
+  const searchTerm = document.getElementById('productSearch')?.value || '';
+  const typeFilter = document.getElementById('productTypeFilter')?.value || 'all';
+  const statusFilter = document.getElementById('productStatusFilter')?.value || 'all';
+  const perPage = document.getElementById('productsPerPage')?.value || '20';
+  
+  // Apply filters
+  const filteredProducts = filterProducts(searchProducts(products, searchTerm), typeFilter, statusFilter);
+  
+  // Apply pagination
+  const paginatedData = paginate(filteredProducts, currentProductsPage, perPage);
+  
+  tbody.innerHTML = '';
+  
+  if (!filteredProducts || filteredProducts.length === 0) {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td colspan="10" style="text-align: center;">
+        No products found
+        <button class="btn btn-primary" onclick="openAddProductModal()">Add Product</button>
+      </td>
+    `;
+    tbody.appendChild(row);
+    const paginationInfo = document.getElementById('productsPaginationInfo');
+    if (paginationInfo) {
+      paginationInfo.textContent = 'Showing 0-0 of 0 items';
+    }
+    return;
+  }
+  
+  paginatedData.data.forEach(product => {
+    const row = document.createElement('tr');
+    const isGoods = product.productType && !product.productType.toLowerCase().includes('service');
+    const stockDisplay = isGoods ? 
+      `${product.openingStock || 0}${(product.openingStock || 0) <= (product.lowStock || 0) ? ' <span style="color: red;">⚠️</span>' : ''}` : 
+      '';
+    
+    row.innerHTML = `
+      <td>${product.hsCode || ''}</td>
+      <td>${product.productName || ''}</td>
+      <td>${product.productType || ''}</td>
+      <td>${product.uom || ''}</td>
+      <td>PKR ${(product.purchaseRate || 0).toFixed(2)}</td>
+      <td>PKR ${(product.saleRate || 0).toFixed(2)}</td>
+      <td>${(product.taxRate || 0).toFixed(2)}%</td>
+      <td>${stockDisplay}</td>
+      <td><span class="status-badge ${product.status === 'Active' ? 'status-active' : 'status-inactive'}">${product.status || 'Active'}</span></td>
+      <td class="action-cell">
+        <button class="btn btn-sm btn-primary" onclick="addProductToInvoiceFromTable('${product.id}')" title="Add to Invoice">
+          <i class="fas fa-plus"></i>
+        </button>
+        <button class="btn btn-sm btn-warning" onclick="editProduct('${product.id}')">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button class="btn btn-sm btn-danger" onclick="deleteProduct('${product.id}')">
+          <i class="fas fa-trash"></i>
+        </button>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+  
+  // Update pagination info and controls
+  const paginationInfo = document.getElementById('productsPaginationInfo');
+  if (paginationInfo) {
+    if (perPage === 'all') {
+      paginationInfo.textContent = `Showing 1-${filteredProducts.length} of ${filteredProducts.length} items`;
+    } else {
+      paginationInfo.textContent = `Showing ${paginatedData.startIndex}-${paginatedData.endIndex} of ${paginatedData.totalItems} items`;
+    }
+  }
+  
+  createPaginationControls('productsPaginationControls', paginatedData.currentPage, paginatedData.totalPages, (page) => {
+    currentProductsPage = page;
+    populateProductsTable();
+  });
+}
+

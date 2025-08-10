@@ -62,33 +62,149 @@
     </div>
   </header> 
   
+  <!-- Navigation Tabs -->
+  <nav class="navigation" style="gap: 10px;">
+    <button class="nav-btn active" data-tab="dashboard-tab">
+      <i class="fas fa-chart-line"></i> Dashboard
+    </button>
+    <button class="nav-btn" data-tab="invoice-tab">
+      <i class="fas fa-file-invoice-dollar"></i> Create Invoice
+    </button>
+    <button class="nav-btn" data-tab="invoices-tab">
+      <i class="fas fa-file-invoice-dollar"></i> Manage Invoices
+    </button>
+    <button class="nav-btn" data-tab="products-tab">
+      <i class="fas fa-box"></i> Manage Products
+    </button>
+    <button class="nav-btn" data-tab="buyers-tab">
+      <i class="fas fa-users"></i> Manage Buyers
+    </button>
+    <button class="nav-btn" data-tab="sellers-tab">
+      <i class="fas fa-user-tie"></i> Manage Sellers
+    </button>
+    <button class="nav-btn" data-tab="api-tab">
+      <i class="fas fa-plug"></i> Test APIs
+    </button>
+  </nav>
+
   <div class="container">
-    <!-- Navigation Tabs -->
-    <nav class="navigation" style="gap: 10px;">
-      <button class="nav-btn active" data-tab="invoice-tab">
-        <i class="fas fa-file-invoice-dollar"></i> Create Invoice
-      </button>
-      <button class="nav-btn" data-tab="invoices-tab">
-        <i class="fas fa-file-invoice-dollar"></i> Manage Invoices
-      </button>
-    
-      
-      <button class="nav-btn" data-tab="products-tab">
-        <i class="fas fa-box"></i> Manage Products
-      </button>
-      <button class="nav-btn" data-tab="buyers-tab">
-        <i class="fas fa-users"></i> Manage Buyers
-      </button>
-      <button class="nav-btn" data-tab="sellers-tab">
-        <i class="fas fa-user-tie"></i> Manage Sellers
-      </button>
-      <button class="nav-btn" data-tab="api-tab">
-        <i class="fas fa-plug"></i> Test APIs
-      </button>
-    </nav>
+    <!-- Dashboard Tab -->
+    <div id="dashboard-tab" class="tab-content active">
+      <div class="dashboard-container">
+        <!-- Analytics Cards -->
+        <div class="analytics-cards">
+          <div class="analytics-card">
+            <div class="card-icon">
+              <i class="fas fa-file-invoice-dollar"></i>
+            </div>
+            <div class="card-content">
+              <h3 id="totalInvoices">0</h3>
+              <p>Total Invoices</p>
+              <small id="invoicesChange">+0 this month</small>
+            </div>
+          </div>
+          
+          <div class="analytics-card">
+            <div class="card-icon">
+              <i class="fas fa-money-bill-wave"></i>
+            </div>
+            <div class="card-content">
+              <h3 id="totalAmount">PKR 0</h3>
+              <p>Total Amount</p>
+              <small id="amountChange">+PKR 0 this month</small>
+            </div>
+          </div>
+          
+          <div class="analytics-card">
+            <div class="card-icon">
+              <i class="fas fa-receipt"></i>
+            </div>
+            <div class="card-content">
+              <h3 id="totalTaxes">PKR 0</h3>
+              <p>Total Taxes</p>
+              <small id="taxesChange">+PKR 0 this month</small>
+            </div>
+          </div>
+          
+          <div class="analytics-card">
+            <div class="card-icon">
+              <i class="fas fa-users"></i>
+            </div>
+            <div class="card-content">
+              <h3 id="totalBuyers">0</h3>
+              <p>Total Buyers</p>
+              <small id="buyersChange">+0 this month</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts and Tables Row -->
+        <div class="dashboard-row">
+          <!-- Latest Invoices -->
+          <div class="dashboard-widget">
+            <div class="widget-header">
+              <h3><i class="fas fa-clock"></i> Latest Invoices</h3>
+              <button class="btn btn-sm btn-primary" onclick="switchToInvoicesTab()">
+                <i class="fas fa-eye"></i> View All
+              </button>
+            </div>
+            <div class="widget-content">
+              <div class="latest-invoices" id="latestInvoices">
+                <!-- Latest invoices will be populated here -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Products -->
+          <div class="dashboard-widget">
+            <div class="widget-header">
+              <h3><i class="fas fa-star"></i> Top Selling Products</h3>
+              <button class="btn btn-sm btn-primary" onclick="switchToProductsTab()">
+                <i class="fas fa-eye"></i> View All
+              </button>
+            </div>
+            <div class="widget-content">
+              <div class="top-products" id="topProducts">
+                <!-- Top products will be populated here -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Second Row -->
+        <div class="dashboard-row">
+          <!-- Top Buyers -->
+          <div class="dashboard-widget">
+            <div class="widget-header">
+              <h3><i class="fas fa-trophy"></i> Top Buyers</h3>
+              <button class="btn btn-sm btn-primary" onclick="switchToBuyersTab()">
+                <i class="fas fa-eye"></i> View All
+              </button>
+            </div>
+            <div class="widget-content">
+              <div class="top-buyers" id="topBuyers">
+                <!-- Top buyers will be populated here -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Invoice Status Chart -->
+          <div class="dashboard-widget">
+            <div class="widget-header">
+              <h3><i class="fas fa-chart-pie"></i> Invoice Status</h3>
+            </div>
+            <div class="widget-content">
+              <div class="status-chart" id="statusChart">
+                <!-- Status chart will be populated here -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
     
     <!-- Create Invoice Tab -->
-    <div id="invoice-tab" class="tab-content active">
+    <div id="invoice-tab" class="tab-content">
       <div class="container" style="max-height: 85vh; overflow-y: auto; padding-right: 10px; padding-bottom: 10px;">
         <div class="card">
           <div class="card-header">
