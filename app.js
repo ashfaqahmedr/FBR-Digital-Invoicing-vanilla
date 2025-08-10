@@ -6142,6 +6142,18 @@ function calculateTotalFromLineItems(items) {
   }, 0);
 }
 
+// Navigation helper functions
+window.switchToInvoicesTab = function switchToInvoicesTab() {
+  document.querySelector('[data-tab="invoices-tab"]').click();
+}
+
+window.switchToProductsTab = function switchToProductsTab() {
+  document.querySelector('[data-tab="products-tab"]').click();
+}
+
+window.switchToBuyersTab = function switchToBuyersTab() {
+  document.querySelector('[data-tab="buyers-tab"]').click();
+}
 
 // Global data stores
 let globalInvoices = [];
@@ -6348,18 +6360,7 @@ function updateTimeBasedAnalytics() {
   });
 }
 
-// Navigation helper functions
-function switchToInvoicesTab() {
-  document.querySelector('[data-tab="invoices-tab"]').click();
-}
 
-function switchToProductsTab() {
-  document.querySelector('[data-tab="products-tab"]').click();
-}
-
-function switchToBuyersTab() {
-  document.querySelector('[data-tab="buyers-tab"]').click();
-}
 
 // Latest Invoices - Top 10 by date
 function updateLatestInvoices() {
