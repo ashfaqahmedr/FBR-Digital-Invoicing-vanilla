@@ -4,6 +4,13 @@ A comprehensive web application for creating and managing FBR (Federal Board of 
 
 ## 🚀 Features
 
+### 📊 Dashboard Analytics
+- **Business Overview**: Real-time statistics and key performance indicators
+- **Invoice Analytics**: Track invoice counts, revenue, and submission rates
+- **Visual Charts**: Interactive charts for sales trends and tax analysis
+- **Performance Metrics**: Monitor API response times and success rates
+- **Quick Actions**: Direct access to frequently used features
+
 ### 📋 Invoice Management
 - **Create Digital Invoices**: Generate FBR-compliant invoices with real-time validation
 - **Draft System**: Save invoices as drafts and edit before submission
@@ -179,15 +186,16 @@ For support and questions:
 - **v1.1.0**: Added product management and advanced filtering
 - **v1.2.0**: Enhanced UI/UX with dark theme support
 - **v1.3.0**: Improved PDF generation and QR code integration
+- **v1.4.0**: Added Dashboard analytics with visual charts and KPIs
 
 ## 🎯 Roadmap
 
 - [ ] Bulk invoice processing
-- [ ] Advanced reporting and analytics
 - [ ] Email integration for invoice delivery
 - [ ] Multi-language support
 - [ ] Advanced tax calculation engine
 - [ ] Integration with accounting software
+- [ ] Export dashboard reports to PDF/Excel
 
 ---
 
