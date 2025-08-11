@@ -5,6 +5,7 @@ import { Header } from './components/layout/Header';
 import { Dashboard } from './pages/Dashboard';
 import { Home } from './pages/Home';
 import { api } from './services/api';
+import { Entities } from './pages/Entities';
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -69,22 +70,7 @@ function AppContent() {
       case 'invoicing':
         return <Home />;
       case 'entities':
-        return (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-              Manage Entities
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              Entity management features will be implemented here. This will include:
-            </p>
-            <ul className="mt-4 space-y-2 text-gray-600 dark:text-gray-400">
-              <li>• Seller management with NTN validation</li>
-              <li>• Buyer database with registration verification</li>
-              <li>• Product catalog with HS codes and tax rates</li>
-              <li>• Import/export functionality</li>
-            </ul>
-          </div>
-        );
+        return <Entities />;
       case 'settings':
         return (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
@@ -92,14 +78,8 @@ function AppContent() {
               Settings
             </h2>
             <p className="text-gray-600 dark:text-gray-400">
-              Application settings will be implemented here. This will include:
+              Application settings will be implemented here.
             </p>
-            <ul className="mt-4 space-y-2 text-gray-600 dark:text-gray-400">
-              <li>• FBR API configuration</li>
-              <li>• Environment switching (Sandbox/Production)</li>
-              <li>• User preferences</li>
-              <li>• Data backup and restore</li>
-            </ul>
           </div>
         );
       default:

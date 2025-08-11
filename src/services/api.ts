@@ -1,197 +1,137 @@
 import { Invoice, Seller, Buyer, Product } from '../types';
+import { dbGetAll, dbPut, dbDelete, STORE_NAMES } from './db';
 
-// Mock data for development - replace with actual API calls
-const mockInvoices: Invoice[] = [
-  {
-    id: '1',
-    invoiceNumber: 'INV-2024-001',
-    sellerName: 'ABC Corporation',
-    buyerName: 'XYZ Ltd',
-    totalAmount: 50000,
-    taxAmount: 8000,
-    status: 'approved',
-    createdAt: '2024-01-15T10:30:00Z',
-    submittedAt: '2024-01-15T11:00:00Z',
-    items: [
-      {
-        id: '1',
-        description: 'Software License',
-        quantity: 1,
-        unitPrice: 50000,
-        taxRate: 16,
-        hsCode: '85234910',
-        amount: 50000,
-      },
-    ],
-  },
-  {
-    id: '2',
-    invoiceNumber: 'INV-2024-002',
-    sellerName: 'ABC Corporation',
-    buyerName: 'DEF Industries',
-    totalAmount: 75000,
-    taxAmount: 12000,
-    status: 'submitted',
-    createdAt: '2024-01-16T14:20:00Z',
-    submittedAt: '2024-01-16T15:00:00Z',
-    items: [
-      {
-        id: '2',
-        description: 'Consulting Services',
-        quantity: 10,
-        unitPrice: 7500,
-        taxRate: 16,
-        hsCode: '85234920',
-        amount: 75000,
-      },
-    ],
-  },
-];
-
-const mockSellers: Seller[] = [
-  {
-    id: '1',
-    name: 'ABC Corporation',
-    ntn: '1234567-8',
-    address: '123 Business Street, Karachi',
-    apiToken: 'sandbox_token_123',
-    environment: 'sandbox',
-  },
-];
-
-const mockBuyers: Buyer[] = [
-  {
-    id: '1',
-    name: 'XYZ Ltd',
-    ntn: '9876543-2',
-    address: '456 Client Avenue, Lahore',
-    registrationStatus: 'registered',
-  },
-  {
-    id: '2',
-    name: 'DEF Industries',
-    cnic: '12345-6789012-3',
-    address: '789 Customer Road, Islamabad',
-    registrationStatus: 'unregistered',
-  },
-];
-
-const mockProducts: Product[] = [
-  {
-    id: '1',
-    name: 'Software License',
-    description: 'Annual software license',
-    hsCode: '85234910',
-    unitPrice: 50000,
-    taxRate: 16,
-    uom: 'Each',
-  },
-  {
-    id: '2',
-    name: 'Consulting Services',
-    description: 'Professional consulting services',
-    hsCode: '85234920',
-    unitPrice: 7500,
-    taxRate: 16,
-    uom: 'Hour',
-  },
-];
-
-// Simulate API delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
 
 export const api = {
   // Invoice operations
   async getInvoices(): Promise<Invoice[]> {
-    await delay(500);
-    return mockInvoices;
+    await delay(100);
+    return dbGetAll<Invoice>(STORE_NAMES.invoices);
   },
 
   async createInvoice(invoice: Omit<Invoice, 'id' | 'createdAt'>): Promise<Invoice> {
-    await delay(800);
+    await delay(100);
     const newInvoice: Invoice = {
       ...invoice,
-      id: Date.now().toString(),
+      id: generateId(),
       createdAt: new Date().toISOString(),
     };
-    mockInvoices.push(newInvoice);
+    await dbPut(STORE_NAMES.invoices, newInvoice);
     return newInvoice;
   },
 
   async updateInvoice(id: string, updates: Partial<Invoice>): Promise<Invoice> {
-    await delay(600);
-    const index = mockInvoices.findIndex(inv => inv.id === id);
-    if (index === -1) throw new Error('Invoice not found');
-    
-    mockInvoices[index] = { ...mockInvoices[index], ...updates };
-    return mockInvoices[index];
+    await delay(100);
+    const all = await dbGetAll<Invoice>(STORE_NAMES.invoices);
+    const existing = all.find(i => i.id === id);
+    if (!existing) throw new Error('Invoice not found');
+    const updated = { ...existing, ...updates } as Invoice;
+    await dbPut(STORE_NAMES.invoices, updated);
+    return updated;
   },
 
   async deleteInvoice(id: string): Promise<void> {
-    await delay(400);
-    const index = mockInvoices.findIndex(inv => inv.id === id);
-    if (index === -1) throw new Error('Invoice not found');
-    mockInvoices.splice(index, 1);
+    await delay(100);
+    await dbDelete(STORE_NAMES.invoices, id);
   },
 
   // Seller operations
   async getSellers(): Promise<Seller[]> {
-    await delay(300);
-    return mockSellers;
+    await delay(100);
+    return dbGetAll<Seller>(STORE_NAMES.sellers);
   },
 
   async createSeller(seller: Omit<Seller, 'id'>): Promise<Seller> {
-    await delay(500);
-    const newSeller: Seller = {
-      ...seller,
-      id: Date.now().toString(),
-    };
-    mockSellers.push(newSeller);
+    await delay(100);
+    const newSeller: Seller = { ...seller, id: generateId() } as Seller;
+    await dbPut(STORE_NAMES.sellers, newSeller);
     return newSeller;
+  },
+
+  async updateSeller(id: string, updates: Partial<Seller>): Promise<Seller> {
+    await delay(100);
+    const all = await dbGetAll<Seller>(STORE_NAMES.sellers);
+    const existing = all.find(s => s.id === id);
+    if (!existing) throw new Error('Seller not found');
+    const updated = { ...existing, ...updates } as Seller;
+    await dbPut(STORE_NAMES.sellers, updated);
+    return updated;
+  },
+
+  async deleteSeller(id: string): Promise<void> {
+    await delay(100);
+    await dbDelete(STORE_NAMES.sellers, id);
   },
 
   // Buyer operations
   async getBuyers(): Promise<Buyer[]> {
-    await delay(300);
-    return mockBuyers;
+    await delay(100);
+    return dbGetAll<Buyer>(STORE_NAMES.buyers);
   },
 
   async createBuyer(buyer: Omit<Buyer, 'id'>): Promise<Buyer> {
-    await delay(500);
-    const newBuyer: Buyer = {
-      ...buyer,
-      id: Date.now().toString(),
-    };
-    mockBuyers.push(newBuyer);
+    await delay(100);
+    const newBuyer: Buyer = { ...buyer, id: generateId() } as Buyer;
+    await dbPut(STORE_NAMES.buyers, newBuyer);
     return newBuyer;
+  },
+
+  async updateBuyer(id: string, updates: Partial<Buyer>): Promise<Buyer> {
+    await delay(100);
+    const all = await dbGetAll<Buyer>(STORE_NAMES.buyers);
+    const existing = all.find(b => b.id === id);
+    if (!existing) throw new Error('Buyer not found');
+    const updated = { ...existing, ...updates } as Buyer;
+    await dbPut(STORE_NAMES.buyers, updated);
+    return updated;
+  },
+
+  async deleteBuyer(id: string): Promise<void> {
+    await delay(100);
+    await dbDelete(STORE_NAMES.buyers, id);
   },
 
   // Product operations
   async getProducts(): Promise<Product[]> {
-    await delay(300);
-    return mockProducts;
+    await delay(100);
+    return dbGetAll<Product>(STORE_NAMES.products);
   },
 
   async createProduct(product: Omit<Product, 'id'>): Promise<Product> {
-    await delay(500);
-    const newProduct: Product = {
-      ...product,
-      id: Date.now().toString(),
-    };
-    mockProducts.push(newProduct);
+    await delay(100);
+    const newProduct: Product = { ...product, id: generateId() } as Product;
+    await dbPut(STORE_NAMES.products, newProduct);
     return newProduct;
   },
 
-  // FBR API operations (mock implementations)
-  async validateInvoice(invoiceData: any): Promise<{ valid: boolean; errors?: string[] }> {
-    await delay(1000);
-    // Mock validation - in real app, this would call FBR API
+  async updateProduct(id: string, updates: Partial<Product>): Promise<Product> {
+    await delay(100);
+    const all = await dbGetAll<Product>(STORE_NAMES.products);
+    const existing = all.find(p => p.id === id);
+    if (!existing) throw new Error('Product not found');
+    const updated = { ...existing, ...updates } as Product;
+    await dbPut(STORE_NAMES.products, updated);
+    return updated;
+  },
+
+  async deleteProduct(id: string): Promise<void> {
+    await delay(100);
+    await dbDelete(STORE_NAMES.products, id);
+  },
+
+  // FBR API placeholders (can be wired later)
+  async validateInvoice(_invoiceData: any): Promise<{ valid: boolean; errors?: string[] }> {
+    await delay(200);
     return { valid: true };
   },
 
-  async submitToFBR(invoiceData: any): Promise<{ success: boolean; fbrId?: string }> {
-    await delay(1500);
-    // Mock submission - in real app, this would call FBR API
+  async submitToFBR(_invoiceData: any): Promise<{ success: boolean; fbrId?: string }> {
+    await delay(300);
     return { success: true, fbrId: `FBR-${Date.now()}` };
   },
 };
