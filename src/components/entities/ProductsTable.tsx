@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useEntities } from '../../hooks/useEntities';
-import { Button, Input, Switch } from '@heroui/react';
+import { Button, Input, Select, SelectItem, Switch } from '@heroui/react';
 import { Product } from '../../types';
 import { DataTable, DataTableColumn } from '../common/DataTable';
 import { ModalManager } from '../common/ModalManager';
+import { referenceData, UOM, TaxRate } from '../../services/referenceData';
 
 export function ProductsTable() {
   const { products, createProduct, updateProduct, deleteProduct } = useEntities();
@@ -15,6 +16,13 @@ export function ProductsTable() {
   const [pageSize, setPageSize] = useState(10);
   const [useInfinite, setUseInfinite] = useState(false);
   const [infiniteCount, setInfiniteCount] = useState(20);
+  const [uomOptions, setUomOptions] = useState<UOM[]>([]);
+  const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
+
+  useEffect(() => {
+    referenceData.getUom().then(setUomOptions);
+    referenceData.getTaxRates().then(setTaxRates);
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -110,14 +118,20 @@ export function ProductsTable() {
         <div className="space-y-3">
           <Input label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} isRequired/>
           <Input label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <Input label="HS Code" value={form.hsCode} onChange={(e) => setForm({ ...form, hsCode: e.target.value })} />
           <div className="grid grid-cols-2 gap-3">
-            <Input label="HS Code" value={form.hsCode} onChange={(e) => setForm({ ...form, hsCode: e.target.value })} />
             <Input type="number" label="Unit Price" value={String(form.unitPrice)} onChange={(e) => setForm({ ...form, unitPrice: Number(e.target.value) || 0 })} />
+            <Select label="UOM" selectedKeys={new Set([form.uom])} onChange={(e) => setForm({ ...form, uom: (e.target as HTMLSelectElement).value })}>
+              {uomOptions.map((u) => (
+                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+              ))}
+            </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Input type="number" label="Tax Rate (%)" value={String(form.taxRate)} onChange={(e) => setForm({ ...form, taxRate: Number(e.target.value) || 0 })} />
-            <Input label="UOM" value={form.uom} onChange={(e) => setForm({ ...form, uom: e.target.value })} />
-          </div>
+          <Select label="Tax Rate" selectedKeys={new Set([String(form.taxRate)])} onChange={(e) => setForm({ ...form, taxRate: Number((e.target as HTMLSelectElement).value) || 0 })}>
+            {taxRates.map((t) => (
+              <SelectItem key={String(t.rate)} value={String(t.rate)}>{t.saleType} - {t.rate}%</SelectItem>
+            ))}
+          </Select>
         </div>
       </ModalManager>
     </>
