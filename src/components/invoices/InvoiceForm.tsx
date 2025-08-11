@@ -3,6 +3,7 @@ import { useInvoiceContext } from '../../context/InvoiceContext';
 import { useInvoices } from '../../hooks/useInvoices';
 import { Invoice, InvoiceItem } from '../../types';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { Button, Input } from '@heroui/react';
 
 export function InvoiceForm() {
   const { state } = useInvoiceContext();
@@ -124,15 +125,13 @@ export function InvoiceForm() {
         {/* Basic Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Invoice Number
-            </label>
-            <input
-              type="text"
+            <Input
+              label="Invoice Number"
               value={formData.invoiceNumber}
               onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-              required
+              variant="bordered"
+              radius="md"
+              isRequired
             />
           </div>
           
@@ -197,14 +196,15 @@ export function InvoiceForm() {
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">
               Invoice Items
             </h3>
-            <button
+            <Button
               type="button"
-              onClick={addItem}
-              className="flex items-center px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              onPress={addItem}
+              color="primary"
+              variant="solid"
+              startContent={<PlusIcon className="w-4 h-4" />}
             >
-              <PlusIcon className="w-4 h-4 mr-1" />
               Add Item
-            </button>
+            </Button>
           </div>
           
           <div className="space-y-4">
@@ -310,13 +310,14 @@ export function InvoiceForm() {
 
         {/* Submit Button */}
         <div className="flex justify-end">
-          <button
+          <Button
             type="submit"
-            disabled={loading}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            isDisabled={loading}
+            color="primary"
+            variant="solid"
           >
             {loading ? 'Creating...' : 'Create Invoice'}
-          </button>
+          </Button>
         </div>
       </form>
     </div>
