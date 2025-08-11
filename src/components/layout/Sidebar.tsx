@@ -4,7 +4,8 @@ import {
   ChartBarIcon, 
   DocumentTextIcon,
   UsersIcon,
-  CogIcon 
+  CogIcon, 
+  CommandLineIcon
 } from '@heroicons/react/24/outline';
 
 interface SidebarProps {
@@ -18,6 +19,7 @@ const navigation = [
   { name: 'Dashboard', id: 'dashboard', icon: ChartBarIcon },
   { name: 'Invoicing', id: 'invoicing', icon: DocumentTextIcon },
   { name: 'Manage Entities', id: 'entities', icon: UsersIcon },
+  { name: 'Test APIs', id: 'testapis', icon: CommandLineIcon },
   { name: 'Settings', id: 'settings', icon: CogIcon },
 ];
 

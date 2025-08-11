@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Home } from './pages/Home';
 import { api } from './services/api';
 import { Entities } from './pages/Entities';
+import { TestApis } from './pages/TestApis';
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -27,7 +28,6 @@ function AppContent() {
         dispatch({ type: 'SET_BUYERS', payload: buyers });
         dispatch({ type: 'SET_PRODUCTS', payload: products });
         
-        // Set first seller as current if available
         if (sellers.length > 0) {
           dispatch({ type: 'SET_CURRENT_SELLER', payload: sellers[0] });
         }
@@ -40,76 +40,44 @@ function AppContent() {
   }, [dispatch]);
 
   useEffect(() => {
-    // Apply dark mode class to document
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    if (darkMode) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
   }, [darkMode]);
 
   const getPageTitle = () => {
     switch (currentPage) {
-      case 'dashboard':
-        return 'Dashboard';
-      case 'invoicing':
-        return 'Invoice Management';
-      case 'entities':
-        return 'Manage Entities';
-      case 'settings':
-        return 'Settings';
-      default:
-        return 'FBR Digital Invoices';
+      case 'dashboard': return 'Dashboard';
+      case 'invoicing': return 'Invoice Management';
+      case 'entities': return 'Manage Entities';
+      case 'settings': return 'Settings';
+      case 'testapis': return 'FBR Test APIs';
+      default: return 'FBR Digital Invoices';
     }
   };
 
   const renderCurrentPage = () => {
     switch (currentPage) {
-      case 'dashboard':
-        return <Dashboard />;
-      case 'invoicing':
-        return <Home />;
-      case 'entities':
-        return <Entities />;
+      case 'dashboard': return <Dashboard />;
+      case 'invoicing': return <Home />;
+      case 'entities': return <Entities />;
+      case 'testapis': return <TestApis />;
       case 'settings':
         return (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-              Settings
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              Application settings will be implemented here.
-            </p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Settings</h2>
+            <p className="text-gray-600 dark:text-gray-400">Application settings will be implemented here.</p>
           </div>
         );
-      default:
-        return <Dashboard />;
+      default: return <Dashboard />;
     }
   };
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Sidebar */}
-      <Sidebar
-        currentPage={currentPage}
-        onPageChange={setCurrentPage}
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
-
-      {/* Main Content */}
+      <Sidebar currentPage={currentPage} onPageChange={setCurrentPage} isCollapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <Header
-          title={getPageTitle()}
-          darkMode={darkMode}
-          onToggleDarkMode={() => setDarkMode(!darkMode)}
-        />
-
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-6">
-          {renderCurrentPage()}
-        </main>
+        <Header title={getPageTitle()} darkMode={darkMode} onToggleDarkMode={() => setDarkMode(!darkMode)} />
+        <main className="flex-1 overflow-y-auto p-6">{renderCurrentPage()}</main>
       </div>
     </div>
   );
