@@ -8,6 +8,7 @@ export interface TransactionType { id: string; name: string }
 export interface UOM { id: string; name: string }
 export interface TaxRate { saleType: string; rate: number }
 export interface SroSchedule { id: string; title: string }
+export interface Scenario { id: string; name: string }
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -29,10 +30,8 @@ const PROVINCES: Province[] = [
 ];
 
 const TRANSACTION_TYPES: TransactionType[] = [
-  { id: 'sale', name: 'Sale' },
-  { id: 'debit', name: 'Debit Note' },
-  { id: 'credit', name: 'Credit Note' },
-  { id: 'return', name: 'Sales Return' },
+  { id: 'Sale Invoice', name: 'Sale Invoice' },
+  { id: 'Debit Note', name: 'Debit Note' },
 ];
 
 const UOMS: UOM[] = [
@@ -52,6 +51,12 @@ const TAX_RATES: TaxRate[] = [
 const SRO_SCHEDULES: SroSchedule[] = [
   { id: 'SRO-1125', title: 'SRO 1125 - Textile' },
   { id: 'SRO-123', title: 'SRO 123 - Special exemptions' },
+];
+
+const SCENARIOS: Scenario[] = [
+  { id: '1', name: 'Standard sale' },
+  { id: '2', name: 'Debit note' },
+  { id: '3', name: 'Credit note' },
 ];
 
 export const referenceData = {
@@ -79,5 +84,9 @@ export const referenceData = {
   async getSroSchedules(): Promise<SroSchedule[]> {
     await delay(100);
     return SRO_SCHEDULES;
+  },
+  async getScenarios(): Promise<Scenario[]> {
+    await delay(100);
+    return SCENARIOS;
   },
 };
