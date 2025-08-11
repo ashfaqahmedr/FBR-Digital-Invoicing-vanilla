@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useEntities } from '../../hooks/useEntities';
-import { Button, Input } from '@heroui/react';
+import { Button, Input, Switch } from '@heroui/react';
 import { Buyer } from '../../types';
 import { DataTable, DataTableColumn } from '../common/DataTable';
 import { ModalManager } from '../common/ModalManager';
@@ -14,6 +14,8 @@ export function BuyersTable() {
   const [form, setForm] = useState<Omit<Buyer, 'id'>>({ name: '', ntn: '', cnic: '', address: '', registrationStatus: 'registered' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [useInfinite, setUseInfinite] = useState(false);
+  const [infiniteCount, setInfiniteCount] = useState(20);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -25,9 +27,12 @@ export function BuyersTable() {
   }, [buyers, search, status]);
 
   const paged = useMemo(() => {
+    if (useInfinite) return filtered.slice(0, infiniteCount);
     const start = (page - 1) * pageSize;
     return filtered.slice(start, start + pageSize);
-  }, [filtered, page, pageSize]);
+  }, [filtered, page, pageSize, useInfinite, infiniteCount]);
+
+  const loadMore = () => setInfiniteCount((c) => c + 20);
 
   const columns: DataTableColumn<Buyer>[] = [
     { id: 'name', header: 'Name', cell: (b) => <div className="text-gray-900 dark:text-white">{b.name}</div> },
@@ -45,7 +50,7 @@ export function BuyersTable() {
   ];
 
   const filterBar = (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 flex-wrap">
       <Input placeholder="Search buyers" value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm"/>
       <select value={status} onChange={(e) => setStatus(e.target.value as any)} className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
         <option value="all">All Status</option>
@@ -53,6 +58,11 @@ export function BuyersTable() {
         <option value="unregistered">Unregistered</option>
       </select>
       <Button color="primary" onPress={openNew}>Add Buyer</Button>
+      <div className="flex items-center gap-2 ml-auto">
+        <Switch size="sm" isSelected={useInfinite} onValueChange={setUseInfinite}>
+          Infinite Scroll
+        </Switch>
+      </div>
     </div>
   );
 
@@ -86,7 +96,10 @@ export function BuyersTable() {
         data={paged}
         totalCount={filtered.length}
         filterBar={filterBar}
-        pagination={{ page, pageSize, onPageChange: setPage, onPageSizeChange: (n) => { setPageSize(n); setPage(1); } }}
+        pagination={useInfinite ? undefined : { page, pageSize, onPageChange: setPage, onPageSizeChange: (n) => { setPageSize(n); setPage(1); } }}
+        infiniteScroll={useInfinite}
+        onLoadMore={useInfinite ? loadMore : undefined}
+        hasMore={useInfinite ? paged.length < filtered.length : false}
       />
 
       <ModalManager

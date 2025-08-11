@@ -28,6 +28,16 @@ export interface Seller {
   address: string;
   apiToken: string;
   environment: 'sandbox' | 'production';
+  // Parity with vanilla app (optional fields)
+  businessName?: string;
+  businessActivity?: string;
+  province?: string;
+  sandboxToken?: string;
+  productionToken?: string;
+  registrationStatus?: string;
+  registrationType?: string;
+  lastSaleInvoiceId?: string;
+  lastDebitNoteId?: string;
 }
 
 export interface Buyer {
@@ -37,6 +47,10 @@ export interface Buyer {
   cnic?: string;
   address: string;
   registrationStatus: 'registered' | 'unregistered';
+  // Additional optional fields for parity
+  province?: string;
+  registrationType?: string;
+  businessName?: string;
 }
 
 export interface Product {

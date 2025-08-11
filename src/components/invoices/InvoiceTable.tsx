@@ -1,9 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { useInvoices } from '../../hooks/useInvoices';
-import { InvoiceRow } from './InvoiceRow';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { ErrorAlert } from '../common/ErrorAlert';
-import { Input } from '@heroui/react';
+import { Input, Switch } from '@heroui/react';
 import { DataTable, DataTableColumn } from '../common/DataTable';
 import { Invoice } from '../../types';
 
@@ -16,6 +15,8 @@ export function InvoiceTable() {
   const [toDate, setToDate] = useState<string>('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [useInfinite, setUseInfinite] = useState(false);
+  const [infiniteCount, setInfiniteCount] = useState(20);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -39,9 +40,12 @@ export function InvoiceTable() {
   }, [invoices, search, status, fromDate, toDate]);
 
   const paged = useMemo(() => {
+    if (useInfinite) return filtered.slice(0, infiniteCount);
     const start = (page - 1) * pageSize;
     return filtered.slice(start, start + pageSize);
-  }, [filtered, page, pageSize]);
+  }, [filtered, page, pageSize, useInfinite, infiniteCount]);
+
+  const loadMore = () => setInfiniteCount((c) => c + 20);
 
   const columns: DataTableColumn<Invoice>[] = [
     { id: 'invoice', header: 'Invoice', cell: (i) => (
@@ -76,7 +80,7 @@ export function InvoiceTable() {
   ];
 
   const filterBar = (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+    <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-center">
       <Input placeholder="Search invoices" value={search} onChange={(e) => setSearch(e.target.value)} />
       <select value={status} onChange={(e) => setStatus(e.target.value as any)} className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
         <option value="all">All Status</option>
@@ -87,6 +91,11 @@ export function InvoiceTable() {
       </select>
       <Input type="date" label="From" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
       <Input type="date" label="To" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+      <div className="flex justify-end">
+        <Switch size="sm" isSelected={useInfinite} onValueChange={setUseInfinite}>
+          Infinite
+        </Switch>
+      </div>
     </div>
   );
 
@@ -112,7 +121,10 @@ export function InvoiceTable() {
       data={paged}
       totalCount={filtered.length}
       filterBar={filterBar}
-      pagination={{ page, pageSize, onPageChange: setPage, onPageSizeChange: (n) => { setPageSize(n); setPage(1); } }}
+      pagination={useInfinite ? undefined : { page, pageSize, onPageChange: setPage, onPageSizeChange: (n) => { setPageSize(n); setPage(1); } }}
+      infiniteScroll={useInfinite}
+      onLoadMore={useInfinite ? loadMore : undefined}
+      hasMore={useInfinite ? paged.length < filtered.length : false}
     />
   );
 }

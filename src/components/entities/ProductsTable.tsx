@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useEntities } from '../../hooks/useEntities';
-import { Button, Input } from '@heroui/react';
+import { Button, Input, Switch } from '@heroui/react';
 import { Product } from '../../types';
 import { DataTable, DataTableColumn } from '../common/DataTable';
 import { ModalManager } from '../common/ModalManager';
@@ -13,6 +13,8 @@ export function ProductsTable() {
   const [form, setForm] = useState<Omit<Product, 'id'>>({ name: '', description: '', hsCode: '', unitPrice: 0, taxRate: 16, uom: '' });
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [useInfinite, setUseInfinite] = useState(false);
+  const [infiniteCount, setInfiniteCount] = useState(20);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -22,9 +24,12 @@ export function ProductsTable() {
   }, [products, search]);
 
   const paged = useMemo(() => {
+    if (useInfinite) return filtered.slice(0, infiniteCount);
     const start = (page - 1) * pageSize;
     return filtered.slice(start, start + pageSize);
-  }, [filtered, page, pageSize]);
+  }, [filtered, page, pageSize, useInfinite, infiniteCount]);
+
+  const loadMore = () => setInfiniteCount((c) => c + 20);
 
   const columns: DataTableColumn<Product>[] = [
     { id: 'name', header: 'Name', cell: (p) => (
@@ -48,9 +53,14 @@ export function ProductsTable() {
   ];
 
   const filterBar = (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 flex-wrap">
       <Input placeholder="Search products" value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm"/>
       <Button color="primary" onPress={openNew}>Add Product</Button>
+      <div className="flex items-center gap-2 ml-auto">
+        <Switch size="sm" isSelected={useInfinite} onValueChange={setUseInfinite}>
+          Infinite Scroll
+        </Switch>
+      </div>
     </div>
   );
 
@@ -84,7 +94,10 @@ export function ProductsTable() {
         data={paged}
         totalCount={filtered.length}
         filterBar={filterBar}
-        pagination={{ page, pageSize, onPageChange: setPage, onPageSizeChange: (n) => { setPageSize(n); setPage(1); } }}
+        pagination={useInfinite ? undefined : { page, pageSize, onPageChange: setPage, onPageSizeChange: (n) => { setPageSize(n); setPage(1); } }}
+        infiniteScroll={useInfinite}
+        onLoadMore={useInfinite ? loadMore : undefined}
+        hasMore={useInfinite ? paged.length < filtered.length : false}
       />
 
       <ModalManager
