@@ -7,6 +7,7 @@ import { Button, Input, Select, SelectItem, Autocomplete, AutocompleteItem, Moda
 import { referenceData, HSCode, UOM, TaxRate, TransactionType, Province, SroSchedule, Scenario } from '../../services/referenceData';
 import { api } from '../../services/api';
 import { useReference } from '../../context/ReferenceContext';
+import { fbr } from '../../services/fbr';
 
 export function InvoiceForm() {
   const { state } = useInvoiceContext();
@@ -201,19 +202,54 @@ export function InvoiceForm() {
             {items.map((item, index) => (
               <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
                 <div className="md:col-span-4">
-                  <Autocomplete label="HS Code" defaultItems={hsOptions} onInputChange={setHsQuery} onSelectionChange={(key) => {
-                    const selected = hsOptions.find(h => h.code === key);
-                    updateItem(index, 'hsCode', selected?.code || String(key));
-                    if (selected) updateItem(index, 'description', selected.description);
+                  <Autocomplete label="HS Code" defaultItems={hsOptions} onInputChange={setHsQuery} onSelectionChange={async (key) => {
+                    const selected = hsOptions.find(h => (h as any).code === key);
+                    updateItem(index, 'hsCode', (selected as any)?.code || String(key));
+                    if ((selected as any)) updateItem(index, 'description', (selected as any).description);
+                    if (ref.token) {
+                      try {
+                        const res = await fbr.getHsUOM(ref.token, String(key), 3);
+                        const uom = Array.isArray(res) && res[0]?.uom ? res[0].uom : (res[0]?.UOM || '');
+                        if (uom) updateItem(index, 'uom', uom);
+                      } catch {}
+                    }
                   }}>
-                    {(opt: HSCode) => (<AutocompleteItem key={opt.code} value={opt.code}>{opt.code} - {opt.description}</AutocompleteItem>)}
+                    {(opt: any) => (<AutocompleteItem key={opt.code} value={opt.code}>{opt.code} - {opt.description}</AutocompleteItem>)}
                   </Autocomplete>
                 </div>
                 <div className="md:col-span-3"><Input label="Description" value={item.description} onChange={(e) => updateItem(index, 'description', e.target.value)} isRequired /></div>
                 <div><Input type="number" label="Qty" min={1} value={String(item.quantity)} onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)} /></div>
                 <div><Input type="number" label="Unit Price" min={0} value={String(item.unitPrice)} onChange={(e) => updateItem(index, 'unitPrice', parseFloat(e.target.value) || 0)} /></div>
-                <div><Select label="UOM">{uomOptions.map((u) => (<SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>))}</Select></div>
-                <div><Select label="Tax Rate" selectedKeys={new Set([String(item.taxRate)])} onChange={(e) => updateItem(index, 'taxRate', Number((e.target as HTMLSelectElement).value) || 0)}>{taxRates.map((t) => (<SelectItem key={String(t.rate)} value={String(t.rate)}>{t.saleType} - {t.rate}%</SelectItem>))}</Select></div>
+                <div>
+                  <Select label="UOM" selectedKeys={new Set([item.uom || ''])} onChange={(e) => updateItem(index, 'uom', (e.target as HTMLSelectElement).value)}>
+                    {uomOptions.map((u) => (<SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>))}
+                  </Select>
+                </div>
+                <div>
+                  <Input label="Sale Type" value={item.saleType || ''} onChange={async (e) => {
+                    const saleType = e.target.value;
+                    updateItem(index, 'saleType', saleType);
+                    if (ref.token) {
+                      try {
+                        const rateRes = await fbr.getSaleTypeToRate(ref.token, saleType);
+                        const rate = Array.isArray(rateRes) ? (rateRes[0]?.rate || rateRes[0]?.Rate || 0) : (rateRes?.rate || 0);
+                        if (rate !== undefined) updateItem(index, 'taxRate', Number(rate));
+                        const today = new Date();
+                        const dateDDMonYYYY = fbr.formatDateDDMonYYYY(today);
+                        const provinceCsv = (formData.provinceId || '') as string;
+                        const sroSched = await fbr.getSroSchedule(ref.token, String(rate), dateDDMonYYYY, provinceCsv);
+                        const first = Array.isArray(sroSched) ? sroSched[0] : null;
+                        if (first?.id) updateItem(index, 'sroId', String(first.id));
+                        if (first?.id) {
+                          const sroItemsRes = await fbr.getSroItems(ref.token, String(first.id), fbr.formatDateYYYYMMDD(today));
+                          // Pick first item or allow UI to select: here store first by default
+                          const firstItem = Array.isArray(sroItemsRes) ? sroItemsRes[0] : null;
+                          if (firstItem?.id) updateItem(index, 'sroItemId', String(firstItem.id));
+                        }
+                      } catch {}
+                    }
+                  }} />
+                </div>
                 <div className="md:col-span-1 flex items-end">{items.length > 1 && (<Button type="button" onPress={() => removeItem(index)} variant="flat" color="danger"><TrashIcon className="w-5 h-5" /></Button>)}</div>
               </div>
             ))}

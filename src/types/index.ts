@@ -19,6 +19,10 @@ export interface InvoiceItem {
   taxRate: number;
   hsCode: string;
   amount: number;
+  uom?: string;
+  saleType?: string;
+  sroId?: string;
+  sroItemId?: string;
 }
 
 export interface Seller {
@@ -36,8 +40,8 @@ export interface Seller {
   productionToken?: string;
   registrationStatus?: string;
   registrationType?: string;
-  lastSaleInvoiceId?: string;
-  lastDebitNoteId?: string;
+  lastSaleInvoiceId?: string | number;
+  lastDebitNoteId?: string | number;
 }
 
 export interface Buyer {
@@ -61,6 +65,10 @@ export interface Product {
   unitPrice: number;
   taxRate: number;
   uom: string;
+  province?: string;
+  saleType?: string;
+  sroId?: string;
+  sroItemId?: string;
 }
 
 export interface DashboardStats {
