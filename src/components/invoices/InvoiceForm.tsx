@@ -6,10 +6,12 @@ import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { Button, Input, Select, SelectItem, Autocomplete, AutocompleteItem, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, Textarea } from '@heroui/react';
 import { referenceData, HSCode, UOM, TaxRate, TransactionType, Province, SroSchedule, Scenario } from '../../services/referenceData';
 import { api } from '../../services/api';
+import { useReference } from '../../context/ReferenceContext';
 
 export function InvoiceForm() {
   const { state } = useInvoiceContext();
   const { createInvoice, loading } = useInvoices();
+  const ref = useReference();
   
   const [formData, setFormData] = useState({
     invoiceNumber: '',
@@ -38,40 +40,51 @@ export function InvoiceForm() {
   const [sroSchedules, setSroSchedules] = useState<SroSchedule[]>([]);
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
 
-  // Preview and success modals
   const [previewOpen, setPreviewOpen] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
   const [previewJson, setPreviewJson] = useState('');
 
   useEffect(() => {
-    referenceData.getUom().then(setUomOptions);
+    // Prefer real-time context data when token exists
+    if (ref.token) {
+      setProvinces(ref.provinces);
+      setUomOptions(ref.uoms);
+      setSroSchedules(ref.sroSchedules);
+    } else {
+      referenceData.getProvinces().then(setProvinces);
+      referenceData.getUom().then(setUomOptions);
+      referenceData.getSroSchedules().then(setSroSchedules);
+    }
     referenceData.getTaxRates().then(setTaxRates);
     referenceData.getTransactionTypes().then(setTxnTypes);
-    referenceData.getProvinces().then(setProvinces);
-    referenceData.getSroSchedules().then(setSroSchedules);
     referenceData.getScenarios().then(setScenarios);
-  }, []);
+  }, [ref.token, ref.provinces, ref.uoms, ref.sroSchedules]);
 
   useEffect(() => {
     let active = true;
-    referenceData.searchHsCodes(hsQuery).then((res) => { if (active) setHsOptions(res); });
+    const search = async () => {
+      if (ref.token) {
+        const res = await ref.searchHsCodes(hsQuery);
+        if (active) setHsOptions(res as any);
+      } else {
+        const res = await referenceData.searchHsCodes(hsQuery);
+        if (active) setHsOptions(res);
+      }
+    };
+    search();
     return () => { active = false; };
-  }, [hsQuery]);
+  }, [hsQuery, ref.token]);
 
   const addItem = () => {
     setItems([...items, { description: '', quantity: 1, unitPrice: 0, taxRate: 16, hsCode: '', amount: 0 }]);
   };
 
-  const removeItem = (index: number) => {
-    if (items.length > 1) setItems(items.filter((_, i) => i !== index));
-  };
+  const removeItem = (index: number) => { if (items.length > 1) setItems(items.filter((_, i) => i !== index)); };
 
   const updateItem = (index: number, field: keyof InvoiceItem, value: any) => {
     const updated = [...items];
     updated[index] = { ...updated[index], [field]: value } as any;
-    if (field === 'quantity' || field === 'unitPrice') {
-      updated[index].amount = (updated[index].quantity || 0) * (updated[index].unitPrice || 0);
-    }
+    if (field === 'quantity' || field === 'unitPrice') updated[index].amount = (updated[index].quantity || 0) * (updated[index].unitPrice || 0);
     setItems(updated);
   };
 
@@ -130,23 +143,13 @@ export function InvoiceForm() {
     await createInvoice(invoiceData);
   };
 
-  const openPreview = () => {
-    const payload = buildInvoicePayload();
-    setPreviewJson(JSON.stringify(payload, null, 2));
-    setPreviewOpen(true);
-  };
-
+  const openPreview = () => { const payload = buildInvoicePayload(); setPreviewJson(JSON.stringify(payload, null, 2)); setPreviewOpen(true); };
   const submitToFBR = async () => {
     const payload = buildInvoicePayload();
-    // In real app, call server. Here we reuse api.validate/submit placeholders
     const validation = await api.validateInvoice(payload);
     if (!validation.valid) { alert('Validation failed'); return; }
     const submission = await api.submitToFBR(payload);
-    if (submission.success) {
-      setSuccessOpen(true);
-    } else {
-      alert('Submission failed');
-    }
+    if (submission.success) setSuccessOpen(true); else alert('Submission failed');
   };
 
   const { subtotal, taxAmount, total } = calculateTotals();

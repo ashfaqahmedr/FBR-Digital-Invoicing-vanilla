@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { InvoiceProvider, useInvoiceContext } from './context/InvoiceContext';
+import { useInvoiceContext } from './context/InvoiceContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { Dashboard } from './pages/Dashboard';
@@ -15,7 +15,6 @@ function AppContent() {
   const { dispatch } = useInvoiceContext();
 
   useEffect(() => {
-    // Load initial data
     const loadData = async () => {
       try {
         const [sellers, buyers, products] = await Promise.all([
@@ -83,12 +82,6 @@ function AppContent() {
   );
 }
 
-function App() {
-  return (
-    <InvoiceProvider>
-      <AppContent />
-    </InvoiceProvider>
-  );
+export default function App() {
+  return <AppContent />;
 }
-
-export default App;
