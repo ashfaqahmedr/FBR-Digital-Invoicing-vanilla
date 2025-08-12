@@ -19,6 +19,10 @@ export interface InvoiceItem {
   taxRate: number;
   hsCode: string;
   amount: number;
+  uom?: string;
+  saleType?: string;
+  sroId?: string;
+  sroItemId?: string;
 }
 
 export interface Seller {
@@ -28,6 +32,16 @@ export interface Seller {
   address: string;
   apiToken: string;
   environment: 'sandbox' | 'production';
+  // Parity with vanilla app (optional fields)
+  businessName?: string;
+  businessActivity?: string;
+  province?: string;
+  sandboxToken?: string;
+  productionToken?: string;
+  registrationStatus?: string;
+  registrationType?: string;
+  lastSaleInvoiceId?: string | number;
+  lastDebitNoteId?: string | number;
 }
 
 export interface Buyer {
@@ -37,6 +51,10 @@ export interface Buyer {
   cnic?: string;
   address: string;
   registrationStatus: 'registered' | 'unregistered';
+  // Additional optional fields for parity
+  province?: string;
+  registrationType?: string;
+  businessName?: string;
 }
 
 export interface Product {
@@ -47,6 +65,10 @@ export interface Product {
   unitPrice: number;
   taxRate: number;
   uom: string;
+  province?: string;
+  saleType?: string;
+  sroId?: string;
+  sroItemId?: string;
 }
 
 export interface DashboardStats {
