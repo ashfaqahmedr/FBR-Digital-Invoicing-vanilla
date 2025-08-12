@@ -145,23 +145,27 @@
             </div>
             
             <div class="form-group">
-              <label for="scenarioId">Scenario ID</label>
-              <select id="scenarioId" required>
-                <option value="">Select Scenario</option>
-              </select>
-            </div>
-          </div>
-          
-          <div class="form-row">
-            <div class="form-group">
               <label for="currency">Currency</label>
               <select id="currency">
-                <option value="PKR">PKR - Pakistani Rupee</option>
-                <option value="USD">USD - US Dollar</option>
-                <option value="EUR">EUR - Euro</option>
+                <option value="PKR">PKR</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
               </select>
             </div>
 
+            <div class="form-group">
+              <label for="paymentMode">Payment Mode</label>
+              <select id="paymentMode" required>
+                <option value="Cash">Cash</option>
+                <option value="Online Transfer">Online Transfer</option>
+                <option value="Credit Sale">Credit Sale</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Credit Card">Credit Card</option>
+                <option value="Debit Card">Debit Card</option>
+              </select>
+            </div>
+            
             <div class="form-group">
               <label for="buyerRegStatus">Buyer Registration Status</label>
               <input type="text" id="buyerRegStatus" readonly placeholder="Will be displayed when buyer is selected">
@@ -170,6 +174,15 @@
             <div class="form-group">
               <label for="invoiceRef">Invoice Reference No</label>
               <input type="text" id="invoiceRef" readonly>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+              <label for="scenarioId">Scenario ID</label>
+              <select id="scenarioId" required>
+                <option value="">Select Scenario</option>
+              </select>
             </div>
           </div>
         </div>
@@ -276,7 +289,7 @@
         <div class="table-container">
           <!-- Search and Filter Section -->
           <div class="filters-section">
-            <div class="form-row" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+            <div class="form-row" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
               <!-- Search Input -->
               <div class="form-group" style="width: 300px;">
                 <div class="search-box" style="position: relative; display: flex; align-items: center;">
@@ -350,6 +363,24 @@
           <div class="table-wrapper">
             <table class="items-table" id="invoicesTable">
               <thead>
+                <tr>
+                  <th style="cursor: pointer;" onclick="sortInvoices('date')">
+                    Date <i class="fas fa-sort" id="sort-invoice-date"></i>
+                  </th>
+                  <th style="cursor: pointer;" onclick="sortInvoices('reference')">
+                    Reference <i class="fas fa-sort" id="sort-invoice-reference"></i>
+                  </th>
+                  <th style="cursor: pointer;" onclick="sortInvoices('buyer')">
+                    Buyer <i class="fas fa-sort" id="sort-invoice-buyer"></i>
+                  </th>
+                  <th style="cursor: pointer;" onclick="sortInvoices('total')">
+                    Total <i class="fas fa-sort" id="sort-invoice-total"></i>
+                  </th>
+                  <th style="cursor: pointer;" onclick="sortInvoices('status')">
+                    Status <i class="fas fa-sort" id="sort-invoice-status"></i>
+                  </th>
+                  <th>Actions</th>
+                </tr>
               </thead>
               <tbody id="invoicesTableBody">
                 <!-- Invoices will be populated here -->
@@ -430,32 +461,32 @@
             <table class="items-table">
               <thead>
                 <tr>
-                  <th class="sortable-header" onclick="sortProducts('hsCode')">
-                    HS Code <i class="fas fa-sort" id="sort-hsCode"></i>
+                  <th style="cursor: pointer;" onclick="sortProducts('hsCode')">
+                    HS Code <i class="fas fa-sort" id="sort-product-hsCode"></i>
                   </th>
-                  <th class="sortable-header" onclick="sortProducts('productName')">
-                    Product Name <i class="fas fa-sort" id="sort-productName"></i>
+                  <th style="cursor: pointer;" onclick="sortProducts('productName')">
+                    Product Name <i class="fas fa-sort" id="sort-product-productName"></i>
                   </th>
-                  <th class="sortable-header" onclick="sortProducts('productType')">
-                    Type <i class="fas fa-sort" id="sort-productType"></i>
+                  <th style="cursor: pointer;" onclick="sortProducts('productType')">
+                    Type <i class="fas fa-sort" id="sort-product-productType"></i>
                   </th>
-                  <th class="sortable-header" onclick="sortProducts('uom')">
-                    UoM <i class="fas fa-sort" id="sort-uom"></i>
+                  <th style="cursor: pointer;" onclick="sortProducts('uom')">
+                    UoM <i class="fas fa-sort" id="sort-product-uom"></i>
                   </th>
-                  <th class="sortable-header" onclick="sortProducts('purchaseRate')">
-                    Purchase Rate <i class="fas fa-sort" id="sort-purchaseRate"></i>
+                  <th style="cursor: pointer;" onclick="sortProducts('purchaseRate')">
+                    Purchase Rate <i class="fas fa-sort" id="sort-product-purchaseRate"></i>
                   </th>
-                  <th class="sortable-header" onclick="sortProducts('saleRate')">
-                    Sale Rate <i class="fas fa-sort" id="sort-saleRate"></i>
+                  <th style="cursor: pointer;" onclick="sortProducts('saleRate')">
+                    Sale Rate <i class="fas fa-sort" id="sort-product-saleRate"></i>
                   </th>
-                  <th class="sortable-header" onclick="sortProducts('taxRate')">
-                    Tax Rate <i class="fas fa-sort" id="sort-taxRate"></i>
+                  <th style="cursor: pointer;" onclick="sortProducts('taxRate')">
+                    Tax Rate <i class="fas fa-sort" id="sort-product-taxRate"></i>
                   </th>
-                  <th class="sortable-header" onclick="sortProducts('openingStock')">
-                    Stock <i class="fas fa-sort" id="sort-openingStock"></i>
+                  <th style="cursor: pointer;" onclick="sortProducts('openingStock')">
+                    Stock <i class="fas fa-sort" id="sort-product-openingStock"></i>
                   </th>
-                  <th class="sortable-header" onclick="sortProducts('status')">
-                    Status <i class="fas fa-sort" id="sort-status"></i>
+                  <th style="cursor: pointer;" onclick="sortProducts('status')">
+                    Status <i class="fas fa-sort" id="sort-product-status"></i>
                   </th>
                   <th>Actions</th>
                 </tr>
@@ -1220,7 +1251,6 @@
       </div>
     </div>
   </div>
-  <script src="sortProducts.js"></script>
   <script type="module" src="app.js"></script>
 
  

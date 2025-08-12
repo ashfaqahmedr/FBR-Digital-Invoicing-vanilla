@@ -1326,6 +1326,7 @@ function buildInvoicePayload(seller, buyer) {
     buyerAddress: buyer.address,
     invoiceRefNo: DOMElements.invoiceRef.value,
     currency: DOMElements.currency.value,
+    paymentMode: document.getElementById('paymentMode').value,
     scenarioId: DOMElements.scenarioId.value,
     items: items.map((item, idx) => ({
       itemSNo: (idx + 1).toString(),
@@ -4395,7 +4396,8 @@ async function generateInvoicePDF(response, isDummy = false, isPreview = false) 
     doc.setFont(undefined, "bold");
     doc.text("Payment Mode:", leftX, leftY);
     doc.setFont(undefined, "normal");
-    leftY += wrapText("Cash", leftX + 32, leftY, 80);
+    const paymentMode = response?.paymentMode || document.getElementById('paymentMode')?.value || 'Cash';
+    leftY += wrapText(paymentMode, leftX + 32, leftY, 80);
 
     doc.setFont(undefined, "bold");
     doc.text("Currency:", leftX, leftY);
@@ -4697,7 +4699,7 @@ async function generateInvoicePDF(response, isDummy = false, isPreview = false) 
       <div class="info-container">
       <div class="info-left">
         <p><strong>Invoice Date:</strong> ${invoiceDate}</p>
-        <p><strong>Payment Mode:</strong> Cash</p>
+        <p><strong>Payment Mode:</strong> ${response?.paymentMode || document.getElementById('paymentMode')?.value || 'Cash'}</p>
         <p><strong>Currency:</strong> ${currency} (All amounts in ${currency})</p>
       </div>
       <div class="info-right">
@@ -6709,6 +6711,23 @@ document.addEventListener('DOMContentLoaded', () => {
   // Product modal is now initialized in initProductModal()
 });
 
+// Product sorting variables
+window.productSortField = '';
+window.productSortDirection = 'asc';
+
+// Sort products function
+function sortProducts(field) {
+  if (window.productSortField === field) {
+    window.productSortDirection = window.productSortDirection === 'asc' ? 'desc' : 'asc';
+  } else {
+    window.productSortField = field;
+    window.productSortDirection = 'asc';
+  }
+  window.populateProductsTable();
+}
+
+// Make function globally available
+window.sortProducts = sortProducts;
 
 
 // Populate products table with pagination

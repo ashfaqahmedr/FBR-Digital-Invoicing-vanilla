@@ -376,6 +376,7 @@
     margin: 20px 0;
     box-shadow: var(--shadow);
     display: flex;
+    justify-content: center;
     overflow-x: auto;
   }
   
@@ -419,9 +420,9 @@
   .card {
     background: white;
     border-radius: var(--border-radius);
-    padding: 20px;
-    margin-bottom: 20px;
+    padding: 10px;
     box-shadow: var(--shadow);
+    margin-bottom: 5px;
     border: 1px solid #eaeaea;
     overflow: hidden;
   }
@@ -496,14 +497,20 @@
   .form-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 15px;
-    margin-bottom: 15px;
+    gap: 10px;
+    margin-bottom: 10px;
   }
   
   /* Form Row Form Group CSS */
   .form-row .form-group {
     flex: 1 1 300px;
     margin-bottom: 0;
+  }
+  
+  /* Invoice Details Form Row - Force single row */
+  .card:has(#invoiceType) .form-row .form-group {
+    flex: 1 1 150px;
+    min-width: 120px;
   }
   
   /* Button CSS */
@@ -606,11 +613,11 @@
   /* Filters Section - Sticky */
   .filters-section {
     position: sticky;
-    top: 0;
+    top: 8px;
     z-index: 20;
     background: white;
     border-bottom: 1px solid #dee2e6;
-    padding: 15px;
+    padding: 5px;
   }
   
   /* Table Wrapper - Scrollable */
@@ -1887,9 +1894,9 @@
   border-right: 1px solid #ccc;
 }
 
-/* Input fields right alignment */
+/* Input fields left alignment */
 input[type="text"], input[type="number"], input[type="email"], select, textarea {
-  text-align: right;
+  text-align: left;
 }
 
 /* Add spacing between complete line item groups */
