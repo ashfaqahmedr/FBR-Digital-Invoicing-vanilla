@@ -2979,6 +2979,8 @@ input[type="text"], input[type="number"], input[type="email"], select, textarea 
   flex-direction: column;
   gap: 2px;
   flex: 1;
+  align-items: center;
+  text-align: center;
 }
 
 .analytics-card.smart-card .count-section {
@@ -3008,6 +3010,8 @@ input[type="text"], input[type="number"], input[type="email"], select, textarea 
   display: flex;
   flex-direction: column;
   gap: 2px;
+  align-items: center;
+  text-align: center;
 }
 
 .analytics-card.smart-card .total-item {
