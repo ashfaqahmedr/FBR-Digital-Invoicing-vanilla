@@ -85,6 +85,9 @@
     <button class="nav-btn" data-tab="api-tab">
       <i class="fas fa-plug"></i> Test APIs
     </button>
+    <button class="nav-btn" data-tab="settings-tab">
+      <i class="fas fa-cog"></i> Settings
+    </button>
   </nav>
 
   <div class="container">
@@ -340,6 +343,16 @@
                 <button class="btn btn-success" onclick="switchToCreateInvoiceTab()">
                   <i class="fas fa-plus"></i> Add Invoice
                 </button>
+                <div class="dropdown" style="display: inline-block; margin-left: 10px;">
+                  <button class="btn btn-primary dropdown-toggle" type="button" id="exportInvoicesBtn" data-toggle="dropdown">
+                    <i class="fas fa-download"></i> Export
+                  </button>
+                  <div class="dropdown-menu">
+                    <a class="dropdown-item" href="#" onclick="exportData('invoices', 'json')"><i class="fas fa-file-code"></i> JSON</a>
+                    <a class="dropdown-item" href="#" onclick="exportData('invoices', 'excel')"><i class="fas fa-file-excel"></i> Excel</a>
+                    <a class="dropdown-item" href="#" onclick="exportData('invoices', 'pdf')"><i class="fas fa-file-pdf"></i> PDF</a>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -453,6 +466,16 @@
                 <button class="btn btn-success" id="addProductBtn">
                   <i class="fas fa-plus"></i> Add Product
                 </button>
+                <div class="dropdown" style="display: inline-block; margin-left: 10px;">
+                  <button class="btn btn-primary dropdown-toggle" type="button" id="exportProductsBtn" data-toggle="dropdown">
+                    <i class="fas fa-download"></i> Export
+                  </button>
+                  <div class="dropdown-menu">
+                    <a class="dropdown-item" href="#" onclick="exportData('products', 'json')"><i class="fas fa-file-code"></i> JSON</a>
+                    <a class="dropdown-item" href="#" onclick="exportData('products', 'excel')"><i class="fas fa-file-excel"></i> Excel</a>
+                    <a class="dropdown-item" href="#" onclick="exportData('products', 'pdf')"><i class="fas fa-file-pdf"></i> PDF</a>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -713,6 +736,16 @@
                 <button class="btn btn-success" id="addSellerBtn">
                   <i class="fas fa-plus"></i> Add Seller
                 </button>
+                <div class="dropdown" style="display: inline-block; margin-left: 10px;">
+                  <button class="btn btn-primary dropdown-toggle" type="button" id="exportSellersBtn" data-toggle="dropdown">
+                    <i class="fas fa-download"></i> Export
+                  </button>
+                  <div class="dropdown-menu">
+                    <a class="dropdown-item" href="#" onclick="exportData('sellers', 'json')"><i class="fas fa-file-code"></i> JSON</a>
+                    <a class="dropdown-item" href="#" onclick="exportData('sellers', 'excel')"><i class="fas fa-file-excel"></i> Excel</a>
+                    <a class="dropdown-item" href="#" onclick="exportData('sellers', 'pdf')"><i class="fas fa-file-pdf"></i> PDF</a>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -817,6 +850,7 @@
                 <button class="btn btn-success" id="addBuyerModalBtn">
                   <i class="fas fa-plus"></i> Add Buyer
                 </button>
+<div id="buyersExportComponent"></div>
               </div>
             </div>
           </div>
@@ -855,6 +889,51 @@
             <div class="pagination-controls" id="buyersPaginationControls">
               <!-- Pagination buttons will be added here -->
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Settings Tab -->
+    <div id="settings-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <h2><i class="fas fa-cog"></i> Database Settings</h2>
+        </div>
+        
+        <div style="padding: 20px;">
+          <div class="form-section" style="margin-bottom: 30px;">
+            <h4 style="margin: 0 0 15px 0; color: #6c757d; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">
+              <i class="fas fa-download"></i> Export Database
+            </h4>
+            <p style="color: #666; margin-bottom: 15px;">Export all your data (invoices, products, buyers, sellers) to a JSON file for backup or transfer.</p>
+            <button class="btn btn-primary" id="exportDatabaseBtn">
+              <i class="fas fa-download"></i> Export Database
+            </button>
+          </div>
+          
+          <div class="form-section" style="margin-bottom: 30px;">
+            <h4 style="margin: 0 0 15px 0; color: #6c757d; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">
+              <i class="fas fa-upload"></i> Import Database
+            </h4>
+            <p style="color: #666; margin-bottom: 15px;">Import data from a JSON file. This will merge with existing data.</p>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input type="file" id="importDatabaseFile" accept=".json" style="display: none;">
+              <button class="btn btn-success" id="importDatabaseBtn">
+                <i class="fas fa-upload"></i> Import Database
+              </button>
+              <span id="importFileName" style="color: #666; font-size: 0.9rem;"></span>
+            </div>
+          </div>
+          
+          <div class="form-section">
+            <h4 style="margin: 0 0 15px 0; color: #dc3545; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">
+              <i class="fas fa-trash-alt"></i> Clear Database
+            </h4>
+            <p style="color: #666; margin-bottom: 15px;">Permanently delete all data from the database. This action cannot be undone.</p>
+            <button class="btn btn-danger" id="clearDatabaseBtn">
+              <i class="fas fa-trash-alt"></i> Clear All Data
+            </button>
           </div>
         </div>
       </div>
@@ -1251,8 +1330,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="app.js"></script>
-
- 
+  <script type="module" src="app.js"></script> 
 </body>
 </html>

@@ -1993,6 +1993,8 @@ async function populateInvoiceScenarios(sellerId, selectedScenarioId = null) {
 
 // Make functions global for HTML onclick handlers
 window.removeScenarioChip = removeScenarioChip
+window.populateTablesAndDashboard = populateTablesAndDashboard
+window.initAppComponents = initAppComponents
 
 // Product Modal Functions
 function initProductModal() {
@@ -6330,6 +6332,7 @@ function calculatePeriodAnalytics(invoices) {
   return { count: invoices.length, amount: totalAmount, taxes: totalTaxes };
 }
 
+
 // Update time-based analytics
 function updateTimeBasedAnalytics() {
   const ranges = getDateRanges();
@@ -6516,14 +6519,8 @@ function initInvoiceFilters() {
 }
 
 
-async function initApp() {
-
-
-  // Migrate old local storage data to IndexedDB
-  await migrateLocalStorageToIndexedDB();
-
-  // Set today's date as default invoice date
-  // DOMElements.invoiceDate.value = new Date().toISOString().split("T")[0];
+// Initial app setup - UI components and event listeners only
+async function initAppComponents() {
   // Set today's date as default invoice date
   DOMElements.invoiceDate.value = getCurrentDate('YYYY-MM-DD');
   
@@ -6553,86 +6550,18 @@ async function initApp() {
     if (postDateLabel) postDateLabel.innerHTML = `<i class="far fa-calendar-alt"></i> POST Date Format: YYYY-MM-DD (e.g. ${currentDateISO})`;
   }
 
-
-  // Initialize invoice filtersfunc
+  // Initialize UI components
   initInvoiceFilters();
-  
-  // Initialize seller filters
   initSellerFilters();
-  
-  // Initialize buyer filters
   initBuyerFilters();
-
-  // Initialize tab navigation
   initTabNavigation();
-
-  // Initialize modals
   initModals();
-  
-  // Initialize product modal
   initProductModal();
-  
-  // Load global data stores
-  globalProducts = await dbGetAll(STORE_NAMES.products);
-  globalSellers = await dbGetAll(STORE_NAMES.sellers);
-  globalInvoices = await dbGetAll(STORE_NAMES.invoices);
-  globalBuyers = await dbGetAll(STORE_NAMES.buyers);
-
-  // Initialize products table
-  await populateProductsTable();
-  
-  // Initialize product filters
   initProductFilters();
-
-  // Initialize form actions (add, remove, update items, etc.)
   initFormActions();
-
-  // Initialize API testing feature
   initAPITesting();
-  
-  // Load sellers and buyers from IndexedDB and populate respective selects
-  await populateSellerSelect();
-
-  const seller = await getSelectedSeller()
-
-  console.log(seller)
-  if (seller) {
-    await populateInvoiceScenarios(seller.ntn);
-  }
-  
-  await populateBuyerSelect();
-
-  // Load sellers from IndexedDB and populate table
-  await populateSellersTable();
-
-   // Load invoices on startup
-  await populateInvoicesTable();
-
-  // Initialize invoice preview modal
-  initPreviewModal(); // Includes addDownloadDummyInvoiceBtn
-
-  // Load buyers from IndexedDB and populate table
-  await populateBuyersTable();
-
-  // Update dashboard with loaded data
-  updateDashboard();
-
-  // Ensure that at least one seller is present in IndexedDB
-  if (globalSellers.length === 0) {
-    showToast("error", "No Sellers", "Please add at least one seller to proceed.");
-    populateProvinceSelects();
-    return; // Block further initialization if no sellers
-  }
-
-  // Use selected seller's token for loading provinces
-  const token = await getToken();
-
-  await loadProvinces(token);
-
-  // Load HSCodes, TransactionTypes and SROSchedules
-  await Promise.all([loadHSCodes(), loadTransactionTypes(), loadSROSchedules()]);
-
- 
+  initPreviewModal();
+  initDatabaseImportExport();
 
   // Toggle between production and sandbox environment
   DOMElements.modeToggle.addEventListener("change", () => {
@@ -6643,9 +6572,39 @@ async function initApp() {
       `You are now in ${isProduction ? "Production" : "Sandbox"} environment.`
     );
   });
+}
 
-  // Add dummy item to the invoice
-  await addNewItem();
+// Populate tables and dashboard with data
+async function populateTablesAndDashboard() {
+  // Load global data stores
+  globalProducts = await dbGetAll(STORE_NAMES.products);
+  globalSellers = await dbGetAll(STORE_NAMES.sellers);
+  globalInvoices = await dbGetAll(STORE_NAMES.invoices);
+  globalBuyers = await dbGetAll(STORE_NAMES.buyers);
+
+  // Populate all tables
+  await populateProductsTable();
+  await populateSellerSelect();
+  await populateBuyerSelect();
+  await populateSellersTable();
+  await populateInvoicesTable();
+  await populateBuyersTable();
+
+  // Update dashboard
+  updateDashboard();
+
+  // Setup seller-specific data
+  const seller = await getSelectedSeller();
+  if (seller) {
+    await populateInvoiceScenarios(seller.ntn);
+    const token = await getToken();
+    await loadProvinces(token);
+    await Promise.all([loadHSCodes(), loadTransactionTypes(), loadSROSchedules()]);
+  } else {
+    populateProvinceSelects();
+  }
+
+
   
   // Store initial app state
   initialAppState = {
@@ -6653,8 +6612,22 @@ async function initApp() {
     selectedBuyer: globalBuyers.length > 0 ? globalBuyers[0].ntn : '',
     invoiceType: 'Sale Invoice',
     currency: 'PKR'
-
   };
+}
+
+// Main initialization function
+async function initApp() {
+  // Migrate old local storage data to IndexedDB
+  await migrateLocalStorageToIndexedDB();
+  
+  // Initialize UI components first
+  await initAppComponents();
+  
+  // Load data and populate tables/dashboard
+  await populateTablesAndDashboard();
+
+    // Add dummy item to the invoice
+  await addNewItem();
 
   // Show success message when initialization is complete
   showToast("success", "System Ready", "FBR Digital Invoicing System initialized successfully");
@@ -6728,6 +6701,8 @@ function sortProducts(field) {
 
 // Make function globally available
 window.sortProducts = sortProducts;
+window.populateTablesAndDashboard = populateTablesAndDashboard;
+window.initAppComponents = initAppComponents;
 
 
 // Populate products table with pagination
@@ -6837,4 +6812,524 @@ window.populateProductsTable = async function populateProductsTable() {
     populateProductsTable();
   });
 }
+// Helper function to get current date in specified format
+function getBackupFileName() {
+  const now = new Date();
+  const date = now.toISOString().split('T')[0]; // YYYY-MM-DD
+  const time = now.toTimeString().split(' ')[0].replace(/:/g, '-'); // HH-MM-SS
+  return `fbr-invoice-backup-${date}_${time}.json`;
+}
 
+// Function to export the entire database as a JSON file
+async function exportDatabase() {
+  const data = {};
+  for (const storeName of Object.values(STORE_NAMES)) {
+    data[storeName] = await dbGetAll(storeName);
+  }
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = getBackupFileName();
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Function to import a database from a JSON file
+async function importDatabase(file) {
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+
+    for (const storeName of Object.values(STORE_NAMES)) {
+      if (data[storeName]) {
+        await dbSetAll(storeName, data[storeName]);
+      }
+    }
+    
+    // Clear existing items before reloading
+    items = [];
+    itemCounter = 0;
+    
+    // Only reload data and populate tables, don't reinitialize entire app
+    await populateTablesAndDashboard();
+    showToast("success", "Import Complete", "Database imported successfully!");
+  } catch (err) {
+    console.error("Import error:", err);
+    showToast("error", "Import Failed", err.message);
+  }
+}
+
+// Initialize database import/export
+function initDatabaseImportExport() {
+  const exportBtn = document.getElementById('exportDatabaseBtn')
+  const importBtn = document.getElementById('importDatabaseBtn')
+  const importFile = document.getElementById('importDatabaseFile')
+  const importFileName = document.getElementById('importFileName')
+    const clearBtn = document.getElementById('clearDatabaseBtn');
+
+  
+  if (exportBtn) {
+    exportBtn.addEventListener('click', exportDatabase)
+  }
+  
+  if (importBtn && importFile) {
+    importBtn.addEventListener('click', () => {
+      importFile.click()
+    })
+    
+    importFile.addEventListener('change', (e) => {
+      const file = e.target.files[0]
+      if (file) {
+        if (importFileName) {
+          importFileName.textContent = file.name
+        }
+        
+        if (confirm(`Import data from ${file.name}? This will merge with existing data.`)) {
+          importDatabase(file)
+        }
+        
+        // Reset file input
+        e.target.value = ''
+      }
+    })
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener('click', clearDatabase);
+  }
+}
+
+
+// Clear database function
+async function clearDatabase() {
+  const confirmed = confirm(
+    'Are you sure you want to clear ALL data from the database?\n\n' +
+    'This will permanently delete:\n' +
+    '• All sellers\n' +
+    '• All buyers\n' +
+    '• All invoices\n' +
+    '• All products\n' +
+    '• All preferences\n' +
+    '• All logs\n\n' +
+    'This action cannot be undone!'
+  );
+
+  if (!confirmed) return;
+
+  const doubleConfirm = confirm(
+    'FINAL WARNING: This will delete ALL your data!\n\n' +
+    'Are you absolutely sure you want to proceed?'
+  );
+
+  if (!doubleConfirm) return;
+
+  try {
+    // Delete the entire database
+    const deleteRequest = indexedDB.deleteDatabase(DB_NAME);
+    
+    deleteRequest.onsuccess = async () => {
+      showToast('success', 'Database Cleared', 'All data has been permanently deleted');
+      
+      // Reload the page to reinitialize the database
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    };
+
+    deleteRequest.onerror = (event) => {
+      console.error('Error deleting database:', event);
+      showToast('error', 'Clear Failed', 'Failed to clear database');
+    };
+
+    deleteRequest.onblocked = () => {
+      showToast('warning', 'Database Blocked', 'Please close all other tabs with this application and try again');
+    };
+
+  } catch (error) {
+    console.error('Clear database error:', error);
+    showToast('error', 'Clear Failed', 'Failed to clear database: ' + error.message);
+  }
+}
+
+// Export functionality
+window.exportData = async (dataType, format) => {
+  try {
+    let data = [];
+    let filename = '';
+    let headers = [];
+    
+    // Get filtered data based on current table view
+    switch (dataType) {
+      case 'invoices':
+        data = await getFilteredInvoices();
+        filename = `invoices_${getCurrentDate()}`;
+        headers = ['Date', 'Reference', 'Buyer', 'Total', 'Status', 'FBR Invoice Number'];
+        break;
+      case 'products':
+        data = await getFilteredProducts();
+        filename = `products_${getCurrentDate()}`;
+        headers = ['HS Code', 'Product Name', 'Type', 'UoM', 'Purchase Rate', 'Sale Rate', 'Tax Rate', 'Stock', 'Status'];
+        break;
+      case 'sellers':
+        data = await getFilteredSellers();
+        filename = `sellers_${getCurrentDate()}`;
+        headers = ['NTN', 'Business Name', 'Province', 'Status', 'Registration Type'];
+        break;
+      case 'buyers':
+        data = await getFilteredBuyers();
+        filename = `buyers_${getCurrentDate()}`;
+        headers = ['NTN', 'Business Name', 'Province', 'Registration Type', 'Status'];
+        break;
+    }
+    
+    if (data.length === 0) {
+      showToast('warning', 'No Data', 'No data available to export');
+      return;
+    }
+    
+    switch (format) {
+      case 'json':
+        exportToJSON(data, filename);
+        break;
+      case 'excel':
+        exportToExcel(data, headers, filename);
+        break;
+      case 'pdf':
+        if (dataType === 'invoices') {
+          exportInvoicesToPDF(data, filename);
+        } else {
+          exportToPDF(data, headers, filename, dataType);
+        }
+        break;
+    }
+    
+    showToast('success', 'Export Complete', `${dataType} exported successfully as ${format.toUpperCase()}`);
+  } catch (error) {
+    console.error('Export error:', error);
+    showToast('error', 'Export Failed', error.message || 'Failed to export data');
+  }
+};
+
+// Get filtered data functions
+async function getFilteredInvoices() {
+  const allInvoices = await dbGetAll(STORE_NAMES.invoices);
+  const searchTerm = document.getElementById('invoiceSearch')?.value || '';
+  const statusFilter = document.getElementById('statusFilter')?.value || 'all';
+  
+  return allInvoices.filter(invoice => {
+    const matchesSearch = !searchTerm || 
+      (invoice.invoiceRefNo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (invoice.buyerBusinessName || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  }).map(invoice => ({
+    id: invoice.id,
+    date: formatDateForDisplay(invoice.dated || invoice.invoiceDate),
+    reference: invoice.invoiceRefNo || '',
+    buyer: invoice.buyerBusinessName || '',
+    total: `${(invoice.totalAmount || 0).toFixed(2)} PKR`,
+    status: invoice.status || 'draft',
+    fbrInvoiceNumber: invoice.invoiceNumber || 'N/A'
+  }));
+}
+
+async function getFilteredProducts() {
+  const allProducts = await dbGetAll(STORE_NAMES.products);
+  const searchTerm = document.getElementById('productSearch')?.value || '';
+  const typeFilter = document.getElementById('productTypeFilter')?.value || 'all';
+  const statusFilter = document.getElementById('productStatusFilter')?.value || 'all';
+  
+  return allProducts.filter(product => {
+    const matchesSearch = !searchTerm || 
+      (product.hsCode || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.productName || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesType = typeFilter === 'all' || product.productType === typeFilter;
+    const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
+    
+    return matchesSearch && matchesType && matchesStatus;
+  }).map(product => ({
+    hsCode: product.hsCode || '',
+    productName: product.productName || '',
+    type: product.productType || '',
+    uom: product.uom || '',
+    purchaseRate: (product.purchaseRate || 0).toFixed(2),
+    saleRate: (product.saleRate || 0).toFixed(2),
+    taxRate: `${(product.taxRate || 0).toFixed(2)}%`,
+    stock: product.openingStock || 0,
+    status: product.status || 'Active'
+  }));
+}
+
+async function getFilteredSellers() {
+  const allSellers = await dbGetAll(STORE_NAMES.sellers);
+  const searchTerm = document.getElementById('sellerSearch')?.value || '';
+  const provinceFilter = document.getElementById('sellerProvinceFilter')?.value || 'all';
+  const statusFilter = document.getElementById('sellerStatusFilter')?.value || 'all';
+  
+  return allSellers.filter(seller => {
+    const matchesSearch = !searchTerm || 
+      (seller.ntn || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (seller.businessName || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesProvince = provinceFilter === 'all' || seller.province === provinceFilter;
+    const matchesStatus = statusFilter === 'all' || seller.registrationStatus === statusFilter;
+    
+    return matchesSearch && matchesProvince && matchesStatus;
+  }).map(seller => ({
+    ntn: seller.ntn || '',
+    businessName: seller.businessName || '',
+    province: seller.province || '',
+    status: seller.registrationStatus || 'Unknown',
+    registrationType: seller.registrationType || 'Unknown'
+  }));
+}
+
+async function getFilteredBuyers() {
+  const allBuyers = await dbGetAll(STORE_NAMES.buyers);
+  const searchTerm = document.getElementById('buyerSearch')?.value || '';
+  const provinceFilter = document.getElementById('buyerProvinceFilter')?.value || 'all';
+  const statusFilter = document.getElementById('buyerStatusFilter')?.value || 'all';
+  
+  return allBuyers.filter(buyer => {
+    const matchesSearch = !searchTerm || 
+      (buyer.ntn || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (buyer.businessName || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesProvince = provinceFilter === 'all' || buyer.province === provinceFilter;
+    const matchesStatus = statusFilter === 'all' || buyer.registrationStatus === statusFilter;
+    
+    return matchesSearch && matchesProvince && matchesStatus;
+  }).map(buyer => ({
+    ntn: buyer.ntn || '',
+    businessName: buyer.businessName || '',
+    province: buyer.province || '',
+    registrationType: buyer.registrationType || '',
+    status: buyer.registrationStatus || 'Unknown'
+  }));
+}
+
+// Export to JSON
+function exportToJSON(data, filename) {
+  const jsonString = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonString], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${filename}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Export to Excel (CSV format)
+function exportToExcel(data, headers, filename) {
+  let csvContent = headers.join(',') + '\n';
+  
+  data.forEach(row => {
+    const values = headers.map(header => {
+      const key = header.toLowerCase().replace(/\s+/g, '');
+      let value = '';
+      
+      // Map headers to data keys
+      switch (key) {
+        case 'date': value = row.date || ''; break;
+        case 'reference': value = row.reference || ''; break;
+        case 'buyer': value = row.buyer || ''; break;
+        case 'total': value = row.total || ''; break;
+        case 'status': value = row.status || ''; break;
+        case 'fbrinvoicenumber': value = row.fbrInvoiceNumber || ''; break;
+        case 'hscode': value = row.hsCode || ''; break;
+        case 'productname': value = row.productName || ''; break;
+        case 'type': value = row.type || ''; break;
+        case 'uom': value = row.uom || ''; break;
+        case 'purchaserate': value = row.purchaseRate || ''; break;
+        case 'salerate': value = row.saleRate || ''; break;
+        case 'taxrate': value = row.taxRate || ''; break;
+        case 'stock': value = row.stock || ''; break;
+        case 'ntn': value = row.ntn || ''; break;
+        case 'businessname': value = row.businessName || ''; break;
+        case 'province': value = row.province || ''; break;
+        case 'registrationtype': value = row.registrationType || ''; break;
+        default: value = row[key] || '';
+      }
+      
+      // Escape commas and quotes
+      if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+        value = `"${value.replace(/"/g, '""')}"`;
+      }
+      return value;
+    });
+    csvContent += values.join(',') + '\n';
+  });
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${filename}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Export to PDF
+function exportToPDF(data, headers, filename, dataType) {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    showToast('error', 'PDF Error', 'PDF library not loaded');
+    return;
+  }
+  
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  
+  // Title
+  doc.setFontSize(16);
+  doc.setFont(undefined, 'bold');
+  doc.text(`${dataType.charAt(0).toUpperCase() + dataType.slice(1)} Export Report`, 20, 20);
+  
+  // Date
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'normal');
+  doc.text(`Generated on: ${formatDateForDisplay(new Date())}`, 20, 30);
+  
+  // Table
+  let y = 45;
+  const pageHeight = doc.internal.pageSize.height;
+  const margin = 20;
+  const rowHeight = 8;
+  const colWidth = (doc.internal.pageSize.width - 2 * margin) / headers.length;
+  
+  // Headers
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'bold');
+  doc.setFillColor(240, 240, 240);
+  
+  headers.forEach((header, i) => {
+    const x = margin + i * colWidth;
+    doc.rect(x, y, colWidth, rowHeight, 'F');
+    doc.rect(x, y, colWidth, rowHeight);
+    doc.text(header, x + 2, y + 5);
+  });
+  
+  y += rowHeight;
+  doc.setFont(undefined, 'normal');
+  
+  // Data rows
+  data.forEach((row, rowIndex) => {
+    if (y + rowHeight > pageHeight - margin) {
+      doc.addPage();
+      y = margin;
+      
+      // Redraw headers on new page
+      doc.setFont(undefined, 'bold');
+      doc.setFillColor(240, 240, 240);
+      headers.forEach((header, i) => {
+        const x = margin + i * colWidth;
+        doc.rect(x, y, colWidth, rowHeight, 'F');
+        doc.rect(x, y, colWidth, rowHeight);
+        doc.text(header, x + 2, y + 5);
+      });
+      y += rowHeight;
+      doc.setFont(undefined, 'normal');
+    }
+    
+    headers.forEach((header, i) => {
+      const x = margin + i * colWidth;
+      const key = header.toLowerCase().replace(/\s+/g, '');
+      let value = '';
+      
+      // Map headers to data keys (same as Excel export)
+      switch (key) {
+        case 'date': value = row.date || ''; break;
+        case 'reference': value = row.reference || ''; break;
+        case 'buyer': value = row.buyer || ''; break;
+        case 'total': value = row.total || ''; break;
+        case 'status': value = row.status || ''; break;
+        case 'fbrinvoicenumber': value = row.fbrInvoiceNumber || ''; break;
+        case 'hscode': value = row.hsCode || ''; break;
+        case 'productname': value = row.productName || ''; break;
+        case 'type': value = row.type || ''; break;
+        case 'uom': value = row.uom || ''; break;
+        case 'purchaserate': value = row.purchaseRate || ''; break;
+        case 'salerate': value = row.saleRate || ''; break;
+        case 'taxrate': value = row.taxRate || ''; break;
+        case 'stock': value = row.stock || ''; break;
+        case 'ntn': value = row.ntn || ''; break;
+        case 'businessname': value = row.businessName || ''; break;
+        case 'province': value = row.province || ''; break;
+        case 'registrationtype': value = row.registrationType || ''; break;
+        default: value = row[key] || '';
+      }
+      
+      doc.rect(x, y, colWidth, rowHeight);
+      const text = doc.splitTextToSize(String(value), colWidth - 4);
+      doc.text(text, x + 2, y + 5);
+    });
+    
+    y += rowHeight;
+  });
+  
+  doc.save(`${filename}.pdf`);
+}
+
+// Export invoices to PDF with full invoice format
+async function exportInvoicesToPDF(invoices, filename) {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    showToast('error', 'PDF Error', 'PDF library not loaded');
+    return;
+  }
+  
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  
+  for (let i = 0; i < invoices.length; i++) {
+    if (i > 0) doc.addPage();
+    
+    const invoice = await dbGet(STORE_NAMES.invoices, invoices[i].id);
+    if (invoice) {
+      await generateSingleInvoicePDF(doc, invoice, false);
+    }
+  }
+  
+  doc.save(`${filename}.pdf`);
+}
+
+// Generate single invoice PDF (simplified version)
+async function generateSingleInvoicePDF(doc, invoice, isNewDoc = true) {
+  const margin = 10;
+  let y = margin + 10;
+  
+  // Title
+  doc.setFontSize(16);
+  doc.setFont(undefined, 'bold');
+  doc.text('Invoice', doc.internal.pageSize.width / 2, y, { align: 'center' });
+  y += 15;
+  
+  // Invoice details
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'normal');
+  doc.text(`Reference: ${invoice.invoiceRefNo || ''}`, margin, y);
+  doc.text(`Date: ${formatDateForDisplay(invoice.dated || invoice.invoiceDate)}`, margin + 100, y);
+  y += 10;
+  
+  doc.text(`Seller: ${invoice.sellerBusinessName || ''}`, margin, y);
+  y += 6;
+  doc.text(`Buyer: ${invoice.buyerBusinessName || ''}`, margin, y);
+  y += 6;
+  doc.text(`Total: ${(invoice.totalAmount || 0).toFixed(2)} PKR`, margin, y);
+  y += 6;
+  doc.text(`Status: ${invoice.status || 'draft'}`, margin, y);
+  
+  if (invoice.invoiceNumber) {
+    y += 6;
+    doc.text(`FBR Invoice Number: ${invoice.invoiceNumber}`, margin, y);
+  }
+}

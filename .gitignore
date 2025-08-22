@@ -1,0 +1,177 @@
+# FBR Digital Invoices - GitIgnore Configuration
+
+# =============================================================================
+# App Directory (Build/Development Directory)
+# =============================================================================
+app/
+app/*
+
+# =============================================================================
+# Exported Data Files
+# =============================================================================
+# JSON Exports
+*.json
+!package.json
+!package-lock.json
+
+# CSV Exports
+*.csv
+
+# PDF Exports
+*.pdf
+
+# Excel Exports
+*.xlsx
+*.xls
+
+# =============================================================================
+# Backup Files
+# =============================================================================
+# FBR Invoice Backups
+fbr-invoice-backup-*.json
+*backup*.json
+
+# Invoice Data Exports
+invoices_*.json
+invoices_*.csv
+
+# Product Data Exports
+products_*.json
+products_*.csv
+
+# Seller Data Exports
+sellers_*.json
+sellers_*.csv
+
+# Buyer Data Exports
+buyers_*.json
+buyers_*.csv
+
+# =============================================================================
+# Archive Files
+# =============================================================================
+*.zip
+*.rar
+*.7z
+*.tar.gz
+*.tar
+
+# =============================================================================
+# Temporary Files
+# =============================================================================
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+desktop.ini
+$RECYCLE.BIN/
+
+# =============================================================================
+# IDE and Editor Files
+# =============================================================================
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Atom
+.atom/
+
+# =============================================================================
+# Logs
+# =============================================================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =============================================================================
+# Runtime Data
+# =============================================================================
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# =============================================================================
+# Browser Storage Dumps
+# =============================================================================
+# Browser database exports
+indexeddb-export.json
+localstorage-export.json
+
+# =============================================================================
+# Development Dependencies
+# =============================================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =============================================================================
+# Security and Sensitive Data
+# =============================================================================
+# API Keys and Tokens (if stored in files)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# API configuration files with sensitive data
+api-config.json
+tokens.json
+credentials.json
+
+# =============================================================================
+# Performance and Profiling
+# =============================================================================
+# Coverage directory used by tools like istanbul
+coverage/
+
+# Profiling data
+*.cpuprofile
+*.heapprofile
+
+# =============================================================================
+# Miscellaneous
+# =============================================================================
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Mac crap
+.DS_Store
+
+# =============================================================================
+# Project Specific Exclusions
+# =============================================================================
+# Test data files
+test-data/
+sample-invoices/
+mock-data/
+
+# Documentation builds
+docs/_build/
+docs/build/
