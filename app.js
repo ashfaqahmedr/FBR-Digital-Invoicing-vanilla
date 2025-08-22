@@ -1,4 +1,5 @@
 // DOMPurify is loaded globally via CDN and helps prevent XSS attacks
+
 // DOMPurify is a library that helps prevent XSS attacks by sanitizing HTML and preventing script injection
 
 let hsCodes = []
@@ -18,6 +19,187 @@ let currentEditingInvoice = null
 let originalInvoiceState = null
 let initialAppState = null
 let grandTotal = 0
+
+// === Custom Confirm Modal ===
+function customConfirm(options) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('confirmModal');
+    const icon = document.getElementById('confirmIcon');
+    const title = document.getElementById('confirmTitle');
+    const subtitle = document.getElementById('confirmSubtitle');
+    const message = document.getElementById('confirmMessage');
+    const confirmBtn = document.getElementById('confirmOk');
+    const cancelBtn = document.getElementById('confirmCancel');
+    
+    // Set content
+    title.textContent = options.title || 'Confirm Action';
+    subtitle.textContent = options.subtitle || 'Are you sure you want to proceed?';
+    message.textContent = options.message || 'This action cannot be undone.';
+    
+    // Set icon and button style based on type
+    const type = options.type || 'warning';
+    icon.className = `icon ${type}`;
+    confirmBtn.className = `btn btn-confirm ${type === 'info' ? 'info' : ''}`;
+    
+    if (type === 'danger') {
+      icon.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+      confirmBtn.textContent = options.confirmText || 'Delete';
+    } else if (type === 'info') {
+      icon.innerHTML = '<i class="fas fa-info-circle"></i>';
+      confirmBtn.textContent = options.confirmText || 'Confirm';
+    } else {
+      icon.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+      confirmBtn.textContent = options.confirmText || 'Confirm';
+    }
+    
+    cancelBtn.textContent = options.cancelText || 'Cancel';
+    
+    // Show modal
+    modal.classList.add('show');
+    
+    // Handle clicks
+    const handleConfirm = () => {
+      modal.classList.remove('show');
+      cleanup();
+      resolve(true);
+    };
+    
+    const handleCancel = () => {
+      modal.classList.remove('show');
+      cleanup();
+      resolve(false);
+    };
+    
+    const handleClickOutside = (e) => {
+      if (e.target === modal) {
+        handleCancel();
+      }
+    };
+    
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        handleCancel();
+      }
+    };
+    
+    const cleanup = () => {
+      confirmBtn.removeEventListener('click', handleConfirm);
+      cancelBtn.removeEventListener('click', handleCancel);
+      modal.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+    
+    // Add event listeners
+    confirmBtn.addEventListener('click', handleConfirm);
+    cancelBtn.addEventListener('click', handleCancel);
+    modal.addEventListener('click', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+  });
+}
+
+// Export functions for each table type
+function exportInvoices(format) {
+  if (typeof exportData === 'function') {
+    exportData(STORE_NAMES.invoices, format);
+  } else {
+    console.warn('Export function not available');
+  }
+}
+
+function exportProducts(format) {
+  if (typeof exportData === 'function') {
+    exportData(STORE_NAMES.products, format);
+  } else {
+    console.warn('Export function not available');
+  }
+}
+
+function exportSellers(format) {
+  if (typeof exportData === 'function') {
+    exportData(STORE_NAMES.sellers, format);
+  } else {
+    console.warn('Export function not available');
+  }
+}
+
+function exportBuyers(format) {
+  if (typeof exportData === 'function') {
+    exportData(STORE_NAMES.buyers, format);
+  } else {
+    console.warn('Export function not available');
+  }
+}
+
+// Custom confirm functions for delete actions
+async function confirmDeleteSeller(ntn) {
+  const confirmed = await customConfirm({
+    type: 'danger',
+    title: 'Delete Seller',
+    subtitle: 'Are you sure you want to delete this seller?',
+    message: 'This action cannot be undone. All data associated with this seller will be permanently removed.',
+    confirmText: 'Delete',
+    cancelText: 'Cancel'
+  });
+  
+  if (confirmed) {
+    deleteSeller(ntn);
+  }
+}
+
+async function confirmDeleteBuyer(ntn) {
+  const confirmed = await customConfirm({
+    type: 'danger',
+    title: 'Delete Buyer',
+    subtitle: 'Are you sure you want to delete this buyer?',
+    message: 'This action cannot be undone. All data associated with this buyer will be permanently removed.',
+    confirmText: 'Delete',
+    cancelText: 'Cancel'
+  });
+  
+  if (confirmed) {
+    deleteBuyer(ntn);
+  }
+}
+
+async function confirmDeleteProduct(id) {
+  const confirmed = await customConfirm({
+    type: 'danger',
+    title: 'Delete Product',
+    subtitle: 'Are you sure you want to delete this product?',
+    message: 'This action cannot be undone. All data associated with this product will be permanently removed.',
+    confirmText: 'Delete',
+    cancelText: 'Cancel'
+  });
+  
+  if (confirmed) {
+    deleteProduct(id);
+  }
+}
+
+async function confirmDeleteInvoice(id) {
+  const confirmed = await customConfirm({
+    type: 'danger',
+    title: 'Delete Invoice',
+    subtitle: 'Are you sure you want to delete this invoice?',
+    message: 'This action cannot be undone. The invoice will be permanently removed from your records.',
+    confirmText: 'Delete',
+    cancelText: 'Cancel'
+  });
+  
+  if (confirmed) {
+    deleteInvoice(id);
+  }
+}
+
+// Make functions globally available
+window.confirmDeleteSeller = confirmDeleteSeller;
+window.confirmDeleteBuyer = confirmDeleteBuyer;
+window.confirmDeleteProduct = confirmDeleteProduct;
+window.confirmDeleteInvoice = confirmDeleteInvoice;
+window.exportInvoices = exportInvoices;
+window.exportProducts = exportProducts;
+window.exportSellers = exportSellers;
+window.exportBuyers = exportBuyers;
 
 
 // === IndexedDB Utility ===
@@ -216,6 +398,10 @@ const DOMElements = {
   successModal: document.getElementById("successModal"),
    closeSuccessModal: document.getElementById("closeSuccessModal"),
   closeSuccessModalBtn: document.getElementById("closeSuccessModalBtn"),
+  errorModal: document.getElementById("errorModal"),
+  closeErrorModal: document.getElementById("closeErrorModal"),
+  closeErrorModalBtn: document.getElementById("closeErrorModalBtn"),
+  retrySubmissionBtn: document.getElementById("retrySubmissionBtn"),
   previewModal: document.getElementById("previewModal"),
   closePreviewModal: document.getElementById("closePreviewModal"),
   closePreviewModalBtn: document.getElementById("closePreviewModalBtn"),
@@ -275,7 +461,12 @@ viewJsonBtn.innerHTML = '<i class="fas fa-code"></i> View JSON';
 // Insert the button before the download button
 const previewFooter = document.querySelector('#previewModal .modal-footer');
 if (previewFooter) {
-  previewFooter.insertBefore(viewJsonBtn, previewFooter.firstChild);
+  // Insert at the beginning if there are children, otherwise just append
+  if (previewFooter.firstElementChild) {
+    previewFooter.insertBefore(viewJsonBtn, previewFooter.firstElementChild);
+  } else {
+    previewFooter.appendChild(viewJsonBtn);
+  }
 }
 
 // Handle preview modal close
@@ -1431,25 +1622,135 @@ function enrichResponseWithInvoiceData(response, invoicePayload) {
 }
 
 
-function switchSuccessTab(tabId) {
-  // Hide all tab contents
-  document.querySelectorAll(".tab-content").forEach((el) => el.classList.remove("active"));
-  // Deactivate all buttons
-  document.querySelectorAll(".tab-nav button").forEach((btn) => btn.classList.remove("tab-active"));
-  
-  // Activate the requested tab
-  const targetTab = document.getElementById(tabId);
-  const targetButton = document.querySelector(`.tab-nav button[data-tab="${tabId}"]`);
 
-  if (targetTab && targetButton) {
-    targetTab.classList.add("active");
-    targetButton.classList.add("tab-active");
-  } else {
-    console.warn(`Tab or button not found for tabId: ${tabId}`);
+// Clean up success modal state
+function cleanupSuccessModal() {
+  const tableTab = document.getElementById('table-tab');
+  const jsonTab = document.getElementById('json-tab');
+  const toggleBtn = document.getElementById('toggleViewBtn');
+  
+  if (tableTab && jsonTab && toggleBtn) {
+    // Remove all classes and styles
+    tableTab.classList.remove('active');
+    jsonTab.classList.remove('active');
+    
+    // Clear inline styles
+    tableTab.removeAttribute('style');
+    jsonTab.removeAttribute('style');
+    
+    // Reset button state
+    toggleBtn.setAttribute('data-current', '');
+    
+    console.log('Success modal state cleaned up');
   }
 }
 
+// Debug function for success modal tabs
+function debugSuccessModalTabs() {
+  const tableTab = document.getElementById('table-tab');
+  const jsonTab = document.getElementById('json-tab');
+  const toggleBtn = document.getElementById('toggleViewBtn');
+  const modal = document.getElementById('successModal');
+  
+  console.log('=== Success Modal Tab Debug ===');
+  console.log('Modal active:', modal?.classList.contains('active'));
+  console.log('Table tab element:', !!tableTab);
+  console.log('JSON tab element:', !!jsonTab);
+  console.log('Toggle button element:', !!toggleBtn);
+  
+  if (tableTab) {
+    console.log('Table tab classes:', tableTab.classList.toString());
+    console.log('Table tab style.display:', tableTab.style.display);
+    console.log('Table tab computed display:', getComputedStyle(tableTab).display);
+    console.log('Table tab visibility:', getComputedStyle(tableTab).visibility);
+  }
+  
+  if (jsonTab) {
+    console.log('JSON tab classes:', jsonTab.classList.toString());
+    console.log('JSON tab style.display:', jsonTab.style.display);
+    console.log('JSON tab computed display:', getComputedStyle(jsonTab).display);
+    console.log('JSON tab visibility:', getComputedStyle(jsonTab).visibility);
+  }
+  
+  if (toggleBtn) {
+    console.log('Toggle button data-current:', toggleBtn.getAttribute('data-current'));
+    console.log('Toggle button text:', toggleBtn.textContent.trim());
+  }
+  
+  console.log('=== End Debug ===');
+}
 
+// Add debug function to window for manual testing
+window.debugSuccessModalTabs = debugSuccessModalTabs;
+window.testToggle = function() {
+  console.log('🧪 MANUAL TOGGLE TEST');
+  const btn = document.getElementById('toggleViewBtn');
+  if (btn) {
+    console.log('Button found:', btn);
+    console.log('Button data-current:', btn.getAttribute('data-current'));
+    console.log('Button innerHTML:', btn.innerHTML);
+    toggleSuccessView();
+  } else {
+    console.error('❌ Toggle button not found!');
+  }
+};
+
+function toggleSuccessView() {
+  console.log('🔄 TOGGLE BUTTON CLICKED!');
+  
+  const tableTab = document.getElementById('table-tab');
+  const jsonTab = document.getElementById('json-tab');
+  const toggleBtn = document.getElementById('toggleViewBtn');
+  
+  if (!tableTab || !jsonTab || !toggleBtn) {
+    console.error('❌ Missing elements for toggle:', { tableTab: !!tableTab, jsonTab: !!jsonTab, toggleBtn: !!toggleBtn });
+    return;
+  }
+  
+  const currentView = toggleBtn.getAttribute('data-current');
+  console.log('Current view before toggle:', currentView);
+  
+  // Always clear both tabs first to prevent conflicts
+  tableTab.classList.remove('active');
+  jsonTab.classList.remove('active');
+  tableTab.style.display = 'none';
+  jsonTab.style.display = 'none';
+  tableTab.style.visibility = 'hidden';
+  jsonTab.style.visibility = 'hidden';
+  
+  if (currentView === 'table') {
+    // Switch to JSON view
+    jsonTab.classList.add('active');
+    jsonTab.style.display = 'block';
+    jsonTab.style.visibility = 'visible';
+    
+    // Update button
+    toggleBtn.setAttribute('data-current', 'json');
+    toggleBtn.innerHTML = '<i class="fas fa-table"></i> View as Table';
+    
+    console.log('Switched to JSON view');
+  } else {
+    // Switch to Table view
+    tableTab.classList.add('active');
+    tableTab.style.display = 'block';
+    tableTab.style.visibility = 'visible';
+    
+    // Update button
+    toggleBtn.setAttribute('data-current', 'table');
+    toggleBtn.innerHTML = '<i class="fas fa-code"></i> View as JSON';
+    
+    console.log('Switched to Table view');
+  }
+  
+  // Debug final state
+  console.log('Final visibility:', {
+    tableDisplay: getComputedStyle(tableTab).display,
+    jsonDisplay: getComputedStyle(jsonTab).display,
+    tableActive: tableTab.classList.contains('active'),
+    jsonActive: jsonTab.classList.contains('active'),
+    currentView: toggleBtn.getAttribute('data-current')
+  });
+}
 
 async function displaySuccessModal(response) {
   if (!DOMElements.successModal) return;
@@ -1518,26 +1819,75 @@ async function displaySuccessModal(response) {
   // Inject table HTML
   DOMElements.successResponseData.innerHTML = html;
 
-  // Explicitly set table tab as active
-  switchSuccessTab('table-tab');
+  // Show modal first
   DOMElements.successModal.classList.add("active");
 
-  // Attach listeners to toggle buttons (ensure only attached once)
-  const tabButtons = document.querySelectorAll(".tab-nav button");
-  tabButtons.forEach((btn) => {
-    // Remove existing listeners to prevent duplicates
-    const newBtn = btn.cloneNode(true);
-    btn.parentNode.replaceChild(newBtn, btn);
-    newBtn.addEventListener("click", (e) => {
-      const tabId = e.currentTarget.getAttribute("data-tab");
-      switchSuccessTab(tabId);
-    });
-  });
+  // Clean up any existing state first
+  cleanupSuccessModal();
+
+  // Set default view to table and ensure proper visibility
+  const tableTab = document.getElementById('table-tab');
+  const jsonTab = document.getElementById('json-tab');
+  const toggleBtn = document.getElementById('toggleViewBtn');
+  
+  // First, clear all existing states to ensure clean initialization
+  if (tableTab && jsonTab && toggleBtn) {
+    // Clear all active states first
+    tableTab.classList.remove('active');
+    jsonTab.classList.remove('active');
+    
+    // Reset all display styles
+    tableTab.style.display = '';
+    jsonTab.style.display = '';
+    tableTab.style.visibility = '';
+    jsonTab.style.visibility = '';
+    
+    // Now set table as active (default view)
+    tableTab.classList.add('active');
+    tableTab.style.display = 'block';
+    tableTab.style.visibility = 'visible';
+    
+    // Ensure JSON tab is hidden
+    jsonTab.classList.remove('active');
+    jsonTab.style.display = 'none';
+    jsonTab.style.visibility = 'hidden';
+    
+    // Set button to initial state (showing table, button says "View as JSON")
+    toggleBtn.setAttribute('data-current', 'table');
+    toggleBtn.innerHTML = '<i class="fas fa-code"></i> View as JSON';
+    
+    console.log('SUCCESS MODAL: Tab visibility initialized - Table:', tableTab.classList.contains('active'), 'JSON:', jsonTab.classList.contains('active'));
+  }
+
+  // Attach toggle button event listener with multiple methods
+  if (toggleBtn) {
+    // Remove existing listeners by removing and re-adding the event
+    toggleBtn.removeEventListener("click", toggleSuccessView);
+    toggleBtn.addEventListener("click", toggleSuccessView);
+    
+    // Also add onclick as fallback
+    toggleBtn.onclick = toggleSuccessView;
+    
+    // Ensure button is clickable
+    toggleBtn.style.pointerEvents = 'auto';
+    toggleBtn.style.cursor = 'pointer';
+    
+    // Also store the reference for debugging
+    window.currentToggleBtn = toggleBtn;
+    console.log('✅ Toggle button event listener attached:', toggleBtn.id);
+    console.log('Button element:', toggleBtn);
+    console.log('Button parent:', toggleBtn.parentElement);
+  }
+  
+  // Debug the final state
+  setTimeout(() => {
+    debugSuccessModalTabs();
+  }, 100);
 
   // Create "Preview" button and inject into modal footer
-  const buttonContainer = document.querySelector('.modal-footer .left-buttons');
-  if (buttonContainer) {
-    const existingPreviewBtn = buttonContainer.querySelector('.preview-invoice-btn');
+  const modalFooter = document.querySelector('#successModal .modal-footer');
+  if (modalFooter) {
+    const existingPreviewBtn = modalFooter.querySelector('.preview-invoice-btn');
     if (existingPreviewBtn) existingPreviewBtn.remove();
 
     const previewButton = document.createElement('button');
@@ -1545,7 +1895,7 @@ async function displaySuccessModal(response) {
     previewButton.innerHTML = '<i class="fas fa-eye"></i> Preview As Invoice';
     previewButton.style.marginRight = '10px';
     previewButton.onclick = () => generateInvoicePDF(response, false, true);
-    buttonContainer.prepend(previewButton);
+    modalFooter.insertBefore(previewButton, modalFooter.firstChild);
   }
 }
 
@@ -1556,14 +1906,50 @@ function handleFailedSubmission(response) {
   displayErrorModal(errorMsg);
 }
 
-function handleSubmissionError(error) {
-  showToast("error", "Submission Error", error.message || error);
-  displayErrorModal(error.message || error);
+function handleSubmissionError(error, errorDetails = null) {
+  const errorMessage = error.message || error;
+  showToast("error", "Submission Error", errorMessage);
+  displayErrorModal(errorMessage, errorDetails);
 }
 
-function displayErrorModal(errorMsg) {
+function displayErrorModal(errorMsg, errorDetails = null) {
   if (DOMElements.errorModal) {
+    // Set the main error message
     document.getElementById("errorModalMessage").textContent = errorMsg;
+    
+    // Handle error details if provided
+    const errorDetailsElement = document.getElementById("errorDetails");
+    const errorDetailsContent = document.getElementById("errorDetailsContent");
+    const showDetailsBtn = document.getElementById("showErrorDetailsBtn");
+    
+    if (errorDetails && errorDetailsElement && errorDetailsContent) {
+      // Format error details
+      const detailsText = typeof errorDetails === 'object' 
+        ? JSON.stringify(errorDetails, null, 2)
+        : errorDetails.toString();
+      
+      errorDetailsContent.textContent = detailsText;
+      
+      // Show the details button
+      if (showDetailsBtn) {
+        showDetailsBtn.style.display = 'inline-block';
+        
+        // Add click handler for showing details
+        showDetailsBtn.onclick = () => {
+          const isVisible = errorDetailsElement.style.display !== 'none';
+          errorDetailsElement.style.display = isVisible ? 'none' : 'block';
+          showDetailsBtn.innerHTML = isVisible 
+            ? '<i class="fas fa-info-circle"></i> Show Details'
+            : '<i class="fas fa-eye-slash"></i> Hide Details';
+        };
+      }
+    } else {
+      // Hide details section if no details provided
+      if (errorDetailsElement) errorDetailsElement.style.display = 'none';
+      if (showDetailsBtn) showDetailsBtn.style.display = 'none';
+    }
+    
+    // Show the modal
     DOMElements.errorModal.classList.add("active");
   }
 }
@@ -1991,10 +2377,7 @@ async function populateInvoiceScenarios(sellerId, selectedScenarioId = null) {
   }
 }
 
-// Make functions global for HTML onclick handlers
-window.removeScenarioChip = removeScenarioChip
-window.populateTablesAndDashboard = populateTablesAndDashboard
-window.initAppComponents = initAppComponents
+
 
 // Product Modal Functions
 function initProductModal() {
@@ -2547,7 +2930,12 @@ function createPaginationControls(containerId, currentPage, totalPages, onPageCh
   
   container.innerHTML = '';
   
-  if (totalPages <= 1) return;
+  // Always show pagination controls for testing purposes, even with 1 page
+  // Commented out the early return to enable testing with 1 item per page
+  // if (totalPages <= 1) return;
+  
+  // Show at least basic pagination info even with 1 page
+  if (totalPages < 1) return;
   
   // Previous button
   const prevBtn = document.createElement('button');
@@ -2580,13 +2968,64 @@ function createPaginationControls(containerId, currentPage, totalPages, onPageCh
   container.appendChild(nextBtn);
 }
 
+// Function to attach per page event listeners
+function attachPerPageListeners() {
+  // Attach invoices per page listener
+  const invoicesPerPage = document.getElementById('invoicesPerPage');
+  if (invoicesPerPage) {
+    invoicesPerPage.removeEventListener('change', onInvoicesPerPageChange);
+    invoicesPerPage.addEventListener('change', onInvoicesPerPageChange);
+  }
+  
+  // Attach products per page listener
+  const productsPerPage = document.getElementById('productsPerPage');
+  if (productsPerPage) {
+    productsPerPage.removeEventListener('change', onProductsPerPageChange);
+    productsPerPage.addEventListener('change', onProductsPerPageChange);
+  }
+  
+  // Attach sellers per page listener
+  const sellersPerPage = document.getElementById('sellersPerPage');
+  if (sellersPerPage) {
+    sellersPerPage.removeEventListener('change', onSellersPerPageChange);
+    sellersPerPage.addEventListener('change', onSellersPerPageChange);
+  }
+  
+  // Attach buyers per page listener
+  const buyersPerPage = document.getElementById('buyersPerPage');
+  if (buyersPerPage) {
+    buyersPerPage.removeEventListener('change', onBuyersPerPageChange);
+    buyersPerPage.addEventListener('change', onBuyersPerPageChange);
+  }
+}
+
+// Per page change handlers
+function onInvoicesPerPageChange() {
+  currentInvoicesPage = 1;
+  populateInvoicesTable();
+}
+
+function onProductsPerPageChange() {
+  currentProductsPage = 1;
+  populateProductsTable();
+}
+
+function onSellersPerPageChange() {
+  currentSellersPage = 1;
+  populateSellersTable();
+}
+
+function onBuyersPerPageChange() {
+  currentBuyersPage = 1;
+  populateBuyersTable();
+}
+
 
 // Initialize product filters
 function initProductFilters() {
   const searchInput = document.getElementById('productSearch');
   const typeFilter = document.getElementById('productTypeFilter');
   const statusFilter = document.getElementById('productStatusFilter');
-  const perPageFilter = document.getElementById('productsPerPage');
 
   // Handle search input
   searchInput?.addEventListener('input', debounce(() => {
@@ -2595,7 +3034,7 @@ function initProductFilters() {
   }, 300));
 
   // Handle filters
-  [typeFilter, statusFilter, perPageFilter].forEach(filter => {
+  [typeFilter, statusFilter].forEach(filter => {
     filter?.addEventListener('change', () => {
       currentProductsPage = 1;
       populateProductsTable();
@@ -2844,7 +3283,8 @@ async function populateSellersTable() {
       </td>
     `;
     tbody.appendChild(row);
-    document.getElementById('sellersPaginationInfo').textContent = 'Showing 0-0 of 0 items';
+    document.getElementById('sellersPaginationInfo').innerHTML = 'Showing <select id="sellersPerPage" class="per-page-select"><option value="1">1</option><option value="10">10</option><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option><option value="all">All</option></select> of 0 items';
+    attachPerPageListeners();
     return;
   }
 
@@ -2857,8 +3297,12 @@ async function populateSellersTable() {
       <td>${seller.registrationStatus || "Unknown"}</td>
       <td>${seller.registrationType || "Unknown"}</td>
       <td class="action-cell">
-        <button class="btn btn-sm" onclick="editSeller('${seller.ntn}')"><i class="fas fa-edit"></i></button>
-        <button class="btn btn-sm btn-danger" onclick="deleteSeller('${seller.ntn}')"><i class="fas fa-trash"></i></button>
+        <button class="btn btn-edit" onclick="editSeller('${seller.ntn}')" title="Edit Seller">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button class="btn btn-delete" onclick="confirmDeleteSeller('${seller.ntn}')" title="Delete Seller">
+          <i class="fas fa-trash"></i>
+        </button>
       </td>
     `;
     tbody.appendChild(row);
@@ -2867,11 +3311,14 @@ async function populateSellersTable() {
   // Update pagination info and controls
   const paginationInfo = document.getElementById('sellersPaginationInfo');
   if (paginationInfo) {
+    const perPageText = perPage === 'all' ? 'All' : perPage;
     if (perPage === 'all') {
-      paginationInfo.textContent = `Showing 1-${filteredSellers.length} of ${filteredSellers.length} items`;
+      paginationInfo.innerHTML = `Showing <select id="sellersPerPage" class="per-page-select"><option value="1">1</option><option value="10">10</option><option value="20">20</option><option value="50">50</option><option value="100">100</option><option value="all" selected>All</option></select> of ${filteredSellers.length} items`;
     } else {
-      paginationInfo.textContent = `Showing ${paginatedData.startIndex}-${paginatedData.endIndex} of ${paginatedData.totalItems} items`;
+      paginationInfo.innerHTML = `Showing <select id="sellersPerPage" class="per-page-select"><option value="1"${perPage==='1'?' selected':''}>1</option><option value="10"${perPage==='10'?' selected':''}>10</option><option value="20"${perPage==='20'?' selected':''}>20</option><option value="50"${perPage==='50'?' selected':''}>50</option><option value="100"${perPage==='100'?' selected':''}>100</option><option value="all">All</option></select> of ${paginatedData.totalItems} items`;
     }
+    // Attach event listener after updating HTML
+    attachPerPageListeners();
   }
   
   createPaginationControls('sellersPaginationControls', paginatedData.currentPage, paginatedData.totalPages, (page) => {
@@ -2911,7 +3358,6 @@ function initSellerFilters() {
   const provinceFilter = document.getElementById('sellerProvinceFilter');
   const statusFilter = document.getElementById('sellerStatusFilter');
   const regStatusFilter = document.getElementById('sellerRegStatusFilter');
-  const perPageFilter = document.getElementById('sellersPerPage');
 
   // Handle search input
   searchInput?.addEventListener('input', debounce(() => {
@@ -2920,7 +3366,7 @@ function initSellerFilters() {
   }, 300));
 
   // Handle filters
-  [provinceFilter, statusFilter, regStatusFilter, perPageFilter].forEach(filter => {
+  [provinceFilter, statusFilter, regStatusFilter].forEach(filter => {
     filter?.addEventListener('change', () => {
       currentSellersPage = 1;
       populateSellersTable();
@@ -3024,7 +3470,8 @@ async function populateBuyersTable() {
       </td>
     `;
     tbody.appendChild(row);
-    document.getElementById('buyersPaginationInfo').textContent = 'Showing 0-0 of 0 items';
+    document.getElementById('buyersPaginationInfo').innerHTML = 'Showing <select id="buyersPerPage" class="per-page-select"><option value="1">1</option><option value="10">10</option><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option><option value="all">All</option></select> of 0 items';
+    attachPerPageListeners();
     return;
   }
 
@@ -3037,8 +3484,12 @@ async function populateBuyersTable() {
       <td>${buyer.registrationType}</td>
       <td>${buyer.registrationStatus || "Unknown"}</td>
       <td class="action-cell">
-        <button class="btn btn-sm" onclick="editBuyer('${buyer.ntn}')"><i class="fas fa-edit"></i></button>
-        <button class="btn btn-sm btn-danger" onclick="deleteBuyer('${buyer.ntn}')"><i class="fas fa-trash"></i></button>
+        <button class="btn btn-edit" onclick="editBuyer('${buyer.ntn}')" title="Edit Buyer">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button class="btn btn-delete" onclick="confirmDeleteBuyer('${buyer.ntn}')" title="Delete Buyer">
+          <i class="fas fa-trash"></i>
+        </button>
       </td>
     `;
     tbody.appendChild(row);
@@ -3047,11 +3498,14 @@ async function populateBuyersTable() {
   // Update pagination info and controls
   const paginationInfo = document.getElementById('buyersPaginationInfo');
   if (paginationInfo) {
+    const perPageText = perPage === 'all' ? 'All' : perPage;
     if (perPage === 'all') {
-      paginationInfo.textContent = `Showing 1-${filteredBuyers.length} of ${filteredBuyers.length} items`;
+      paginationInfo.innerHTML = `Showing <select id="buyersPerPage" class="per-page-select"><option value="1">1</option><option value="10">10</option><option value="20">20</option><option value="50">50</option><option value="100">100</option><option value="all" selected>All</option></select> of ${filteredBuyers.length} items`;
     } else {
-      paginationInfo.textContent = `Showing ${paginatedData.startIndex}-${paginatedData.endIndex} of ${paginatedData.totalItems} items`;
+      paginationInfo.innerHTML = `Showing <select id="buyersPerPage" class="per-page-select"><option value="1"${perPage==='1'?' selected':''}>1</option><option value="10"${perPage==='10'?' selected':''}>10</option><option value="20"${perPage==='20'?' selected':''}>20</option><option value="50"${perPage==='50'?' selected':''}>50</option><option value="100"${perPage==='100'?' selected':''}>100</option><option value="all">All</option></select> of ${paginatedData.totalItems} items`;
     }
+    // Attach event listener after updating HTML
+    attachPerPageListeners();
   }
   
   createPaginationControls('buyersPaginationControls', paginatedData.currentPage, paginatedData.totalPages, (page) => {
@@ -3091,7 +3545,6 @@ function initBuyerFilters() {
   const provinceFilter = document.getElementById('buyerProvinceFilter');
   const regTypeFilter = document.getElementById('buyerRegTypeFilter');
   const statusFilter = document.getElementById('buyerStatusFilter');
-  const perPageFilter = document.getElementById('buyersPerPage');
 
   // Handle search input
   searchInput?.addEventListener('input', debounce(() => {
@@ -3100,7 +3553,7 @@ function initBuyerFilters() {
   }, 300));
 
   // Handle filters
-  [provinceFilter, regTypeFilter, statusFilter, perPageFilter].forEach(filter => {
+  [provinceFilter, regTypeFilter, statusFilter].forEach(filter => {
     filter?.addEventListener('change', () => {
       currentBuyersPage = 1;
       populateBuyersTable();
@@ -3962,27 +4415,74 @@ function initModals() {
   const buyerForm = document.getElementById("buyerForm")
   const buyerModalTitle = DOMElements.buyerModalTitle
 
-  addBuyerBtn.addEventListener("click", () => {
-    currentEditingBuyer = null
-    buyerForm.reset()
-    buyerModalTitle.textContent = "Add New Buyer"
-    document.getElementById("buyerModalError").classList.remove("show")
-    buyerModal.classList.add("active")
-  })
+  // Safety check for required elements
+  if (!buyerModal || !buyerForm || !buyerModalTitle) {
+    console.warn('Buyer modal elements not found, skipping buyer modal initialization');
+    return;
+  }
 
-  addBuyerModalBtn.addEventListener("click", () => {
-    currentEditingBuyer = null
-    buyerForm.reset()
-    buyerModalTitle.textContent = "Add New Buyer"
-    document.getElementById("buyerModalError").classList.remove("show")
-    buyerModal.classList.add("active")
-  })
+  if (addBuyerBtn) {
+    addBuyerBtn.addEventListener("click", () => {
+      currentEditingBuyer = null
+      buyerForm.reset()
+      buyerModalTitle.textContent = "Add New Buyer"
+      const errorEl = document.getElementById("buyerModalError");
+      if (errorEl) errorEl.classList.remove("show")
+      buyerModal.classList.add("active")
+    })
+  }
 
-  closeBuyerModal.addEventListener("click", () => buyerModal.classList.remove("active"))
-  cancelBuyerBtn.addEventListener("click", () => buyerModal.classList.remove("active"))
+  // Check if addBuyerModalBtn exists before adding event listener
+  if (addBuyerModalBtn) {
+    addBuyerModalBtn.addEventListener("click", () => {
+      currentEditingBuyer = null
+      buyerForm.reset()
+      buyerModalTitle.textContent = "Add New Buyer"
+      const errorEl = document.getElementById("buyerModalError");
+      if (errorEl) errorEl.classList.remove("show")
+      buyerModal.classList.add("active")
+    })
+  }
+
+  if (closeBuyerModal) {
+    closeBuyerModal.addEventListener("click", () => buyerModal.classList.remove("active"))
+  }
+  
+  if (cancelBuyerBtn) {
+    cancelBuyerBtn.addEventListener("click", () => buyerModal.classList.remove("active"))
+  }
 
   // Success Modal close handlers
   const successModalCloseBtn = DOMElements.closeSuccessModal;
+  
+  
+  // Error Modal event handlers
+  if (DOMElements.closeErrorModal) {
+    DOMElements.closeErrorModal.addEventListener('click', () => {
+      DOMElements.errorModal.classList.remove('active');
+    });
+  }
+  
+  if (DOMElements.closeErrorModalBtn) {
+    DOMElements.closeErrorModalBtn.addEventListener('click', () => {
+      DOMElements.errorModal.classList.remove('active');
+    });
+  }
+  
+  if (DOMElements.retrySubmissionBtn) {
+    DOMElements.retrySubmissionBtn.addEventListener('click', () => {
+      // Hide error modal
+      DOMElements.errorModal.classList.remove('active');
+      // Hide any error display
+      if (DOMElements.invoiceResult) {
+        DOMElements.invoiceResult.style.display = "none";
+      }
+      // Trigger submission again
+      if (DOMElements.submitBtn) {
+        DOMElements.submitBtn.click();
+      }
+    });
+  }
   const successModalCloseFooterBtn = document.getElementById("closeSuccessModalBtn");
   
   const closeSuccessModalHandler = async () => {
@@ -4004,56 +4504,61 @@ function initModals() {
   if (successModalCloseBtn) successModalCloseBtn.addEventListener("click", closeSuccessModalHandler);
   if (successModalCloseFooterBtn) successModalCloseFooterBtn.addEventListener("click", closeSuccessModalHandler);
 
-  DOMElements.buyerNTN.addEventListener("blur", async (event) => {
-    const ntn = event.target.value
-    if (!ntn) return
+  // Buyer field event listeners with safety checks
+  if (DOMElements.buyerNTN) {
+    DOMElements.buyerNTN.addEventListener("blur", async (event) => {
+      const ntn = event.target.value
+      if (!ntn) return
 
-    const existingBuyers = await dbGetAll(STORE_NAMES.buyers)
-    const exists = existingBuyers.some(
-      (buyer) => buyer.ntn === ntn && (!currentEditingBuyer || buyer.id !== currentEditingBuyer.id),
-    )
+      const existingBuyers = await dbGetAll(STORE_NAMES.buyers)
+      const exists = existingBuyers.some(
+        (buyer) => buyer.ntn === ntn && (!currentEditingBuyer || buyer.id !== currentEditingBuyer.id),
+      )
 
-    if (exists) {
-      showModalError("buyerModal", "A buyer with this NTN/CNIC already exists!")
-      event.target.focus()
-      return
-    }
-
-    const { status } = await validateRegistration(ntn)
-    DOMElements.buyerStatus.value = status
-
-    const { type } = await getRegistrationType(ntn)
-    DOMElements.buyerRegType.value = type
-  })
-
-  saveBuyerBtn.addEventListener("click", async () => {
-    const buyers = await dbGetAll(STORE_NAMES.buyers)
-    const newBuyer = {
-      id: currentEditingBuyer ? currentEditingBuyer.id : Date.now().toString(),
-      ntn: DOMElements.buyerNTN.value,
-      businessName: DOMElements.buyerBusinessName.value,
-      registrationType: DOMElements.buyerRegType.value,
-      province: DOMElements.buyerProvince.value,
-      address: DOMElements.buyerAddress.value,
-      registrationStatus: DOMElements.buyerStatus.value,
-    }
-
-    if (currentEditingBuyer) {
-      const index = buyers.findIndex((buyer) => buyer.id === currentEditingBuyer.id)
-      if (index !== -1) {
-        buyers[index] = newBuyer
+      if (exists) {
+        showModalError("buyerModal", "A buyer with this NTN/CNIC already exists!")
+        event.target.focus()
+        return
       }
-    } else {
-      buyers.push(newBuyer)
-    }
 
-    await dbSetAll(STORE_NAMES.buyers, buyers)
-    populateBuyerSelect()
-    populateBuyersTable()
-    buyerForm.reset()
-    buyerModal.classList.remove("active")
-    showToast("success", "Buyer Saved", "Buyer information saved successfully")
-  })
+      const { status } = await validateRegistration(ntn)
+      if (DOMElements.buyerStatus) DOMElements.buyerStatus.value = status
+
+      const { type } = await getRegistrationType(ntn)
+      if (DOMElements.buyerRegType) DOMElements.buyerRegType.value = type
+    })
+  }
+
+  if (saveBuyerBtn) {
+    saveBuyerBtn.addEventListener("click", async () => {
+      const buyers = await dbGetAll(STORE_NAMES.buyers)
+      const newBuyer = {
+        id: currentEditingBuyer ? currentEditingBuyer.id : Date.now().toString(),
+        ntn: DOMElements.buyerNTN?.value || '',
+        businessName: DOMElements.buyerBusinessName?.value || '',
+        registrationType: DOMElements.buyerRegType?.value || '',
+        province: DOMElements.buyerProvince?.value || '',
+        address: DOMElements.buyerAddress?.value || '',
+        registrationStatus: DOMElements.buyerStatus?.value || '',
+      }
+
+      if (currentEditingBuyer) {
+        const index = buyers.findIndex((buyer) => buyer.id === currentEditingBuyer.id)
+        if (index !== -1) {
+          buyers[index] = newBuyer
+        }
+      } else {
+        buyers.push(newBuyer)
+      }
+
+      await dbSetAll(STORE_NAMES.buyers, buyers)
+      if (typeof populateBuyerSelect === 'function') populateBuyerSelect()
+      if (typeof populateBuyersTable === 'function') populateBuyersTable()
+      buyerForm.reset()
+      buyerModal.classList.remove("active")
+      showToast("success", "Buyer Saved", "Buyer information saved successfully")
+    })
+  }
 
   // Seller Modal
   const sellerModal = DOMElements.sellerModal
@@ -4064,94 +4569,120 @@ function initModals() {
   const sellerForm = document.getElementById("sellerForm")
   const sellerModalTitle = DOMElements.sellerModalTitle
 
-  addSellerBtn.addEventListener("click", () => {
-    currentEditingSeller = null
-    sellerForm.reset()
-    sellerModalTitle.textContent = "Add New Seller"
-    document.getElementById("sellerModalError").classList.remove("show")
-    DOMElements.scenarioChips.innerHTML = ""
-    DOMElements.sellerScenarioIds.value = ""
-    sellerModal.classList.add("active")
-  })
-
-  closeSellerModal.addEventListener("click", () => sellerModal.classList.remove("active"))
-  cancelSellerBtn.addEventListener("click", () => sellerModal.classList.remove("active"))
-
-  // Business Activity change handler
-  DOMElements.sellerBusinessActivity.addEventListener("change", function () {
-    populateSectorOptions(this.value)
-    DOMElements.sellerSector.value = ""
-    DOMElements.sellerScenarioSelect.innerHTML = '<option value="">Select Scenario to Add</option>'
-  })
-
-  // Sector change handler
-  DOMElements.sellerSector.addEventListener("change", function () {
-    const businessActivity = DOMElements.sellerBusinessActivity.value
-    if (businessActivity && this.value) {
-      populateScenarioOptions(businessActivity, this.value)
-    }
-  })
-
-  // Scenario selection handler
-  DOMElements.sellerScenarioSelect.addEventListener("change", function () {
-    if (this.value) {
-      addScenarioChip(this.value)
-      this.value = ""
-    }
-  })
-
-  DOMElements.sellerNTN.addEventListener("blur", async (event) => {
-    const ntn = event.target.value
-    if (!ntn) return
-
-    const existingSellers = await dbGetAll(STORE_NAMES.sellers)
-    const exists = existingSellers.some(
-      (seller) => seller.ntn === ntn && (!currentEditingSeller || seller.id !== currentEditingSeller.id),
-    )
-
-    if (exists) {
-      showModalError("sellerModal", "A seller with this NTN already exists!")
-      event.target.focus()
-      return
+  // Safety check for seller modal elements
+  if (!sellerModal || !sellerForm) {
+    console.warn('Seller modal elements not found, skipping seller modal initialization');
+  } else {
+    if (addSellerBtn) {
+      addSellerBtn.addEventListener("click", () => {
+        currentEditingSeller = null
+        sellerForm.reset()
+        if (sellerModalTitle) sellerModalTitle.textContent = "Add New Seller"
+        const errorEl = document.getElementById("sellerModalError");
+        if (errorEl) errorEl.classList.remove("show")
+        if (DOMElements.scenarioChips) DOMElements.scenarioChips.innerHTML = ""
+        if (DOMElements.sellerScenarioIds) DOMElements.sellerScenarioIds.value = ""
+        sellerModal.classList.add("active")
+      })
     }
 
-    const sandboxToken = DOMElements.sellerSandboxToken.value
-    const productionToken = DOMElements.sellerProductionToken.value
-    const token = sandboxToken || productionToken
-
-    if (token) {
-      const { status } = await validateRegistration(ntn, token)
-      DOMElements.sellerRegStatus.value = status
-
-      const { type } = await getRegistrationType(ntn, token)
-      DOMElements.sellerRegType.value = type
+    if (closeSellerModal) {
+      closeSellerModal.addEventListener("click", () => sellerModal.classList.remove("active"))
     }
-  })
+    
+    if (cancelSellerBtn) {
+      cancelSellerBtn.addEventListener("click", () => sellerModal.classList.remove("active"))
+    }
 
-  saveSellerBtn.addEventListener("click", async () => {
-  const newSeller = {
-    id: currentEditingSeller ? currentEditingSeller.id : Date.now().toString(),
-    ntn: DOMElements.sellerNTN.value,
-    businessName: DOMElements.sellerBusinessName.value,
-    businessActivity: DOMElements.sellerBusinessActivity.value,
-    sector: DOMElements.sellerSector.value,
-    scenarioIds: document.getElementById("sellerScenarioIds").value.split(",").filter((id) => id.trim()),
-    province: DOMElements.sellerProvince.value,
-    address: DOMElements.sellerAddress.value,
-    sandboxToken: DOMElements.sellerSandboxToken.value,
-    productionToken: DOMElements.sellerProductionToken.value,
-    registrationStatus: DOMElements.sellerRegStatus.value,
-    registrationType: DOMElements.sellerRegType.value,
-    lastSaleInvoiceId: Number.parseInt(DOMElements.sellerLastSaleInvoiceId.value) || 1,
-    lastDebitNoteId: Number.parseInt(DOMElements.sellerLastDebitNoteId.value) || 1,
-  };
-  await dbSet(STORE_NAMES.sellers, newSeller);
-  await populateSellerSelect();
-  await populateSellersTable();
-  sellerForm.reset();
-  sellerModal.classList.remove("active");
-  showToast("success", "Seller Saved", "Seller information saved successfully");
-});
+    // Business Activity change handler
+    if (DOMElements.sellerBusinessActivity) {
+      DOMElements.sellerBusinessActivity.addEventListener("change", function () {
+        if (typeof populateSectorOptions === 'function') populateSectorOptions(this.value)
+        if (DOMElements.sellerSector) DOMElements.sellerSector.value = ""
+        if (DOMElements.sellerScenarioSelect) {
+          DOMElements.sellerScenarioSelect.innerHTML = '<option value="">Select Scenario to Add</option>'
+        }
+      })
+    }
+
+    // Sector change handler
+    if (DOMElements.sellerSector) {
+      DOMElements.sellerSector.addEventListener("change", function () {
+        const businessActivity = DOMElements.sellerBusinessActivity?.value
+        if (businessActivity && this.value && typeof populateScenarioOptions === 'function') {
+          populateScenarioOptions(businessActivity, this.value)
+        }
+      })
+    }
+
+    // Scenario selection handler
+    if (DOMElements.sellerScenarioSelect) {
+      DOMElements.sellerScenarioSelect.addEventListener("change", function () {
+        if (this.value && typeof addScenarioChip === 'function') {
+          addScenarioChip(this.value)
+          this.value = ""
+        }
+      })
+    }
+  }
+
+  // Seller NTN field event listener with safety check
+  if (DOMElements.sellerNTN) {
+    DOMElements.sellerNTN.addEventListener("blur", async (event) => {
+      const ntn = event.target.value
+      if (!ntn) return
+
+      const existingSellers = await dbGetAll(STORE_NAMES.sellers)
+      const exists = existingSellers.some(
+        (seller) => seller.ntn === ntn && (!currentEditingSeller || seller.id !== currentEditingSeller.id),
+      )
+
+      if (exists) {
+        showModalError("sellerModal", "A seller with this NTN already exists!")
+        event.target.focus()
+        return
+      }
+
+      const sandboxToken = DOMElements.sellerSandboxToken?.value
+      const productionToken = DOMElements.sellerProductionToken?.value
+      const token = sandboxToken || productionToken
+
+      if (token) {
+        const { status } = await validateRegistration(ntn, token)
+        if (DOMElements.sellerRegStatus) DOMElements.sellerRegStatus.value = status
+
+        const { type } = await getRegistrationType(ntn, token)
+        if (DOMElements.sellerRegType) DOMElements.sellerRegType.value = type
+      }
+    })
+  }
+
+  if (saveSellerBtn && sellerForm && sellerModal) {
+    saveSellerBtn.addEventListener("click", async () => {
+      const newSeller = {
+        id: currentEditingSeller ? currentEditingSeller.id : Date.now().toString(),
+        ntn: DOMElements.sellerNTN?.value || '',
+        businessName: DOMElements.sellerBusinessName?.value || '',
+        businessActivity: DOMElements.sellerBusinessActivity?.value || '',
+        sector: DOMElements.sellerSector?.value || '',
+        scenarioIds: document.getElementById("sellerScenarioIds")?.value.split(",").filter((id) => id.trim()) || [],
+        province: DOMElements.sellerProvince?.value || '',
+        address: DOMElements.sellerAddress?.value || '',
+        sandboxToken: DOMElements.sellerSandboxToken?.value || '',
+        productionToken: DOMElements.sellerProductionToken?.value || '',
+        registrationStatus: DOMElements.sellerRegStatus?.value || '',
+        registrationType: DOMElements.sellerRegType?.value || '',
+        lastSaleInvoiceId: Number.parseInt(DOMElements.sellerLastSaleInvoiceId?.value) || 1,
+        lastDebitNoteId: Number.parseInt(DOMElements.sellerLastDebitNoteId?.value) || 1,
+      };
+      await dbSet(STORE_NAMES.sellers, newSeller);
+      if (typeof populateSellerSelect === 'function') await populateSellerSelect();
+      if (typeof populateSellersTable === 'function') await populateSellersTable();
+      sellerForm.reset();
+      sellerModal.classList.remove("active");
+      showToast("success", "Seller Saved", "Seller information saved successfully");
+    });
+  }
 
   // JSON Modal
   const jsonModal = document.getElementById("jsonModal")
@@ -4161,146 +4692,53 @@ function initModals() {
   const copyJsonBtn = document.getElementById("copyJsonBtn")
   const jsonPayload = document.getElementById("jsonPayload")
 
+  // Safety checks for JSON modal elements
+  if (viewJsonBtn && jsonModal) {
+    viewJsonBtn.addEventListener("click", async () => {
+      try {
+        const seller = await getSelectedSeller()
+        const buyer = await getSelectedBuyer()
 
-  viewJsonBtn.addEventListener("click", async () => {
-    
-    const seller = await getSelectedSeller()
-    const buyer = await getSelectedBuyer()
+        console.log("seller", seller)
+        console.log("buyer", buyer)
 
-    console.log("seller", seller)
-    console.log("buyer", buyer)
-
-
-   invoicePayload = {
-      invoiceType: DOMElements.invoiceType.value,
-      invoiceDate: DOMElements.invoiceDate.value,
-      sellerNTNCNIC: seller.ntn,
-      sellerBusinessName: seller.businessName,
-      sellerProvince: seller.province,
-      sellerAddress: seller.address,
-      buyerNTNCNIC: buyer.ntn,
-      buyerBusinessName: buyer.businessName,
-      buyerRegistrationType: buyer.registrationType,
-      buyerProvince: buyer.province,
-      buyerAddress: buyer.address,
-      invoiceRefNo: DOMElements.invoiceRef.value,
-      currency: DOMElements.currency.value,
-      items: items.map((item, index) => {
-        const value = item.quantity * item.unitPrice
-        const salesTaxApplicable = (value * item.taxRate) / 100
-        const totalValues = value + salesTaxApplicable
-
-        // Find the SRO schedule description
-        const sroSchedule = item.sroScheduleOptions
-          ? item.sroScheduleOptions.find((s) => s.srO_ID == item.sroSchedule)
-          : null
-        const sroScheduleNo = sroSchedule ? sroSchedule.srO_DESC : ""
-
-        // Find the SRO item description
-        const sroItemData = item.sroItemOptions
-          ? item.sroItemOptions.find((si) => si.srO_ITEM_ID == item.sroItem)
-          : null
-        const sroItemSerialNo = sroItemData ? sroItemData.srO_ITEM_DESC : ""
-
-        return {
-          itemSNo: (index + 1).toString(),
-          hsCode: item.hsCode,
-          productDescription: item.description,
-          rate: `${item?.taxRate?.toFixed(2)}%`,
-          uoM: item.uom || "",
-          quantity: item.quantity,
-          valueSalesExcludingST: value,
-          salesTaxApplicable: salesTaxApplicable,
-          salesTaxWithheldAtSource: 0,
-          extraTax: item.extraTax || 0,
-          furtherTax: item.furtherTax || 0,
-          totalValues: value + salesTaxApplicable + (item.extraTax || 0) + (item.furtherTax || 0) - (item.discount || 0),
-          sroScheduleNo: sroScheduleNo,
-          fedPayable: item.fedPayable || 0,
-          discount: item.discount || 0,
-          salesTaxWithheldAtSource: item.salesTaxWithheldAtSource || 0,
-          saleType: item.saleType || "Services",
-          sroItemSerialNo: sroItemSerialNo,
-          fixedNotifiedValueOrRetailPrice: 0,
+        if (!seller) {
+          showToast("error", "No Seller", "Please select a seller first")
+          return
         }
-      }),
-    }
 
-    if (!DOMElements.modeToggle.checked) {
-      invoicePayload.scenarioId = DOMElements.scenarioId.value
-    }
+        if (!buyer) {
+          showToast("error", "No Buyer", "Please select a buyer first")
+          return
+        }
 
-    jsonPayload.textContent = JSON.stringify(invoicePayload, null, 2)
-    jsonModal.classList.add("active")
-  })
-
-  closeJsonModal.addEventListener("click", () => jsonModal.classList.remove("active"))
-  closeJsonModalBtn.addEventListener("click", () => jsonModal.classList.remove("active"))
-
-  copyJsonBtn.addEventListener("click", () => {
-    navigator.clipboard
-      .writeText(jsonPayload.textContent)
-      .then(() => showToast("success", "Copied", "JSON payload copied to clipboard"))
-      .catch((err) => showToast("error", "Copy Failed", "Failed to copy JSON to clipboard"))
-  })
-
-  // Success Modal
-  const successModal = DOMElements.successModal
-  const closeSuccessModalBtn = DOMElements.closeSuccessModalBtn
-  const downloadInvoiceBtn = document.getElementById("downloadInvoiceBtn")
-  const copySuccessJsonBtn = document.getElementById("copySuccessJsonBtn")
-
-  // Handle modal close with cleanup
-  const handleSuccessModalClose = async () => {
-    // Hide the success modal
-    successModal.classList.remove("active");
-    
-    // Clear the success modal content
-    const respContainer = DOMElements.successResponseData;
-    if (respContainer) {
-      respContainer.innerHTML = '';
-    }
-    
-    // Reset the form to initial state
-    // await resetToInitialState();
-    
-    // Ensure create invoice tab is visible and active
-    switchToCreateInvoiceTab();
-    
-    // Clear any existing success messages
-    const successMessages = document.querySelectorAll('.toast.success');
-    successMessages.forEach(msg => msg.remove());
-  };
-  
-  closeSuccessModal.addEventListener("click", handleSuccessModalClose);
-  closeSuccessModalBtn.addEventListener("click", handleSuccessModalClose);
-
-  // Tab navigation for success modal
-  document.querySelectorAll(".tab-nav button").forEach((button) => {
-    button.addEventListener("click", function () {
-      document.querySelectorAll(".tab-nav button").forEach((btn) => btn.classList.remove("tab-active"))
-      document.querySelectorAll(".tab-content").forEach((tab) => tab.classList.remove("active"))
-      this.classList.add("tab-active")
-      document.getElementById(this.getAttribute("data-tab")).classList.add("active")
+        const { payload } = await generateInvoiceJSON()
+        if (jsonPayload) {
+          jsonPayload.textContent = JSON.stringify(payload, null, 2)
+        }
+        jsonModal.classList.add("active")
+      } catch (error) {
+        console.error('Error in viewJsonBtn click handler:', error)
+        showToast("error", "Error", "Failed to generate JSON preview")
+      }
     })
-  })
-
-  downloadInvoiceBtn.addEventListener("click", () => {
-     if (!lastSubmissionResponse || items.length === 0) {
-    showToast("error", "Missing Data", "Invoice or items data is not available.");
-    return;
   }
 
-  generateInvoicePDF();
-  })
-
-  copySuccessJsonBtn.addEventListener("click", () => {
-    const jsonContent = DOMElements.successResponseJson.textContent
-    navigator.clipboard
-      .writeText(jsonContent)
-      .then(() => showToast("success", "Copied", "JSON copied to clipboard"))
-      .catch(() => showToast("error", "Copy Failed", "Failed to copy JSON"))
-  })
+  if (closeJsonModal && jsonModal) {
+    closeJsonModal.addEventListener("click", () => jsonModal.classList.remove("active"))
+  }
+  
+  if (closeJsonModalBtn && jsonModal) {
+    closeJsonModalBtn.addEventListener("click", () => jsonModal.classList.remove("active"))
+  }
+  
+  if (copyJsonBtn && jsonPayload) {
+    copyJsonBtn.addEventListener("click", () => {
+      navigator.clipboard.writeText(jsonPayload.textContent)
+        .then(() => showToast("success", "Copied", "JSON copied to clipboard"))
+        .catch(() => showToast("error", "Error", "Failed to copy JSON"))
+    })
+  }
 }
 
   // Common layout configuration for both PDF and preview
@@ -4858,7 +5296,20 @@ function initPreviewModal() {
   previewInvoiceBtn.id = "previewInvoiceBtn";
   const successModalFooter = document.querySelector("#successModal .modal-footer");
   if (successModalFooter) {
-    successModalFooter.insertBefore(previewInvoiceBtn, successModalFooter.querySelector("#downloadInvoiceBtn"));
+    // Try to find the left-buttons container first (new structure)
+    const leftButtons = successModalFooter.querySelector(".left-buttons");
+    if (leftButtons) {
+      leftButtons.appendChild(previewInvoiceBtn);
+    } else {
+      // Fallback: try to insert before download button (old structure)
+      const downloadBtn = successModalFooter.querySelector("#downloadInvoiceBtn");
+      if (downloadBtn) {
+        successModalFooter.insertBefore(previewInvoiceBtn, downloadBtn);
+      } else {
+        // Last resort: just append to footer
+        successModalFooter.appendChild(previewInvoiceBtn);
+      }
+    }
   }
 
   // Get references to JSON modal elements
@@ -5505,12 +5956,34 @@ const submitURL = isProduction ? API_URLS.submit.production : API_URLS.submit.sa
         `
 
         errorContainer.style.display = "block"
-        throw new Error(vr?.error || "Validation failed")
+        
+        // Display error modal with detailed information
+        const errorMessage = vr?.error || "Validation failed";
+        const errorDetails = {
+          error: vr?.error || "Unknown error",
+          errorCode: vr?.errorCode || "-",
+          response: validateResponse
+        };
+        
+        handleSubmissionError(new Error(errorMessage), errorDetails);
+        return; // Don't throw, just return after handling
       }
     } catch (error) {
-
-      console.error("Submission error:", error)
-      showToast("error", "Submission Failed", error.message)
+      console.error("Submission error:", error);
+      
+      // Handle different types of errors
+      const errorMessage = error.message || "An unexpected error occurred during submission";
+      const errorDetails = {
+        message: errorMessage,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Show toast for immediate feedback
+      showToast("error", "Submission Failed", errorMessage);
+      
+      // Display detailed error modal
+      handleSubmissionError(error, errorDetails);
       
     } finally {
       submitBtn.innerHTML = originalContent
@@ -5879,11 +6352,25 @@ function filterByStatus(invoices, status) {
   if (status === 'all') return invoices;
   
   return invoices.filter(invoice => {
-    if (status === 'submitted') {
+    if (status === 'Submitted') {
       return invoice?.invoiceNumber != null;
+    } else if (status === 'Draft') {
+      return invoice?.invoiceNumber == null && (invoice.status === 'Draft' || invoice.status === undefined);
+    } else if (status === 'Failed') {
+      return invoice.status === 'Failed';
     } else {
       return invoice.status === status;
     }
+  });
+}
+
+// Filter invoices by type
+function filterByType(invoices, type) {
+  if (type === 'all') return invoices;
+  
+  return invoices.filter(invoice => {
+    const invoiceType = invoice?.invoiceType || invoice?.invoicePayload?.invoiceType || '';
+    return invoiceType === type;
   });
 }
 
@@ -5899,12 +6386,12 @@ function sortInvoices(field) {
     invoiceSortDirection = 'asc';
   }
   
-  // Update sort icons
-  document.querySelectorAll('[id^="sort-"]').forEach(icon => {
+  // Update sort icons for invoice table
+  document.querySelectorAll('[id^="sort-invoice-"]').forEach(icon => {
     icon.className = 'fas fa-sort';
   });
   
-  const sortIcon = document.getElementById(`sort-${field}`);
+  const sortIcon = document.getElementById(`sort-invoice-${field}`);
   if (sortIcon) {
     sortIcon.className = `fas fa-sort-${invoiceSortDirection === 'asc' ? 'up' : 'down'}`;
   }
@@ -5922,7 +6409,8 @@ async function populateInvoicesTable() {
 
   // Get filter values
   const searchTerm = document.getElementById('invoiceSearch')?.value || '';
-  const statusFilter = document.getElementById('statusFilter')?.value || 'all';
+  const statusFilter = document.getElementById('invoiceStatusFilter')?.value || 'all'; // Updated to correct ID
+  const typeFilter = document.getElementById('invoiceTypeFilter')?.value || 'all'; // Added type filter
   const dateFilter = document.getElementById('dateFilter')?.value || 'all';
   const dateFrom = document.getElementById('dateFrom')?.value;
   const dateTo = document.getElementById('dateTo')?.value;
@@ -5931,6 +6419,7 @@ async function populateInvoicesTable() {
   // Apply filters
   let filteredInvoices = searchInvoices(invoices, searchTerm);
   filteredInvoices = filterByStatus(filteredInvoices, statusFilter);
+  filteredInvoices = filterByType(filteredInvoices, typeFilter); // Added type filtering
   filteredInvoices = filterByDateRange(filteredInvoices, dateFilter, dateFrom, dateTo);
 
   // Apply sorting
@@ -6010,42 +6499,7 @@ async function populateInvoicesTable() {
       <button class="btn btn-primary" onclick="switchToCreateInvoiceTab()">Add Invoice</button>
     </td>`;
     tbody.appendChild(row);
-    // const paginationInfo = document.getElementById('invoicesPaginationInfo');
-    // if (paginationInfo) {
-    //   paginationInfo.textContent = 'Showing 0-0 of 0 items';
-    // }
     return;
-  }
-
-  // Update table header to include ID column with sorting
-  const thead = document.querySelector('#invoicesTable thead');
-  if (thead) {
-    thead.innerHTML = `
-      <tr>
-        <th style="cursor: pointer;" onclick="sortInvoices('id')">
-          ID <i class="fas fa-sort" id="sort-id"></i>
-        </th>
-        <th style="cursor: pointer;" onclick="sortInvoices('invoiceRefNo')">
-          Inv. Ref. No. <i class="fas fa-sort" id="sort-invoiceRefNo"></i>
-        </th>
-        <th style="cursor: pointer;" onclick="sortInvoices('invoiceDate')">
-          Date <i class="fas fa-sort" id="sort-invoiceDate"></i>
-        </th>
-        <th style="cursor: pointer;" onclick="sortInvoices('invoiceType')">
-          Inv. Type <i class="fas fa-sort" id="sort-invoiceType"></i>
-        </th>
-        <th style="cursor: pointer;" onclick="sortInvoices('totalAmount')">
-          Amount <i class="fas fa-sort" id="sort-totalAmount"></i>
-        </th>
-        <th style="cursor: pointer;" onclick="sortInvoices('status')">
-          Status <i class="fas fa-sort" id="sort-status"></i>
-        </th>
-        <th style="cursor: pointer;" onclick="sortInvoices('invoiceNumber')">
-          FBR Inv. No. <i class="fas fa-sort" id="sort-invoiceNumber"></i>
-        </th>
-        <th>Actions</th>
-      </tr>
-    `;
   }
 
   paginatedData.data.forEach((invoice) => {
@@ -6070,19 +6524,19 @@ async function populateInvoicesTable() {
       <td><span class="status-badge ${isSubmitted ? 'status-submitted' : 'status-draft'}">${statusText}</span></td>
       <td>${invoice?.invoiceNumber || invoice?.invoicePayload?.invoiceNumber || ''}</td>
       <td class="action-cell" style="white-space: nowrap;">
-        <button class="btn btn-sm btn-info" onclick="viewInvoice('${invoice?.id}')" title="View Invoice">
+        <button class="btn btn-view" onclick="viewInvoice('${invoice?.id}')" title="View Invoice">
           <i class="fas fa-eye"></i>
         </button>
-        <button class="btn btn-sm btn-warning" onclick="editInvoice('${invoice?.id}')" 
+        <button class="btn btn-edit" onclick="editInvoice('${invoice?.id}')" 
                 ${!isDraft ? 'disabled' : ''} title="Edit Invoice">
           <i class="fas fa-edit"></i>
         </button>
-        <button class="btn btn-sm btn-secondary" onclick="duplicateInvoice('${invoice?.id}')" 
+        <button class="btn btn-duplicate" onclick="duplicateInvoice('${invoice?.id}')" 
                 title="Duplicate Invoice">
           <i class="fas fa-copy"></i>
         </button>
         
-        <button class="btn btn-sm btn-danger" onclick="deleteInvoice('${invoice?.id}')" 
+        <button class="btn btn-delete" onclick="confirmDeleteInvoice('${invoice?.id}')" 
                 ${!isDraft ? 'disabled' : ''} title="Delete Invoice">
           <i class="fas fa-trash"></i>
         </button>
@@ -6097,11 +6551,14 @@ async function populateInvoicesTable() {
 
 
   if (paginationInfo) {
+    const perPageText = perPage === 'all' ? 'All' : perPage;
     if (perPage === 'all') {
-      paginationInfo.textContent = `Showing 1-${filteredInvoices.length} of ${filteredInvoices.length} items`;
+      paginationInfo.innerHTML = `Showing <select id="invoicesPerPage" class="per-page-select"><option value="1">1</option><option value="10">10</option><option value="20">20</option><option value="50">50</option><option value="100">100</option><option value="all" selected>All</option></select> of ${filteredInvoices.length} items`;
     } else {
-      paginationInfo.textContent = `Showing ${paginatedData.startIndex}-${paginatedData.endIndex} of ${paginatedData.totalItems} items`;
+      paginationInfo.innerHTML = `Showing <select id="invoicesPerPage" class="per-page-select"><option value="1"${perPage==='1'?' selected':''}>1</option><option value="10"${perPage==='10'?' selected':''}>10</option><option value="20"${perPage==='20'?' selected':''}>20</option><option value="50"${perPage==='50'?' selected':''}>50</option><option value="100"${perPage==='100'?' selected':''}>100</option><option value="all">All</option></select> of ${paginatedData.totalItems} items`;
     }
+    // Attach event listener after updating HTML
+    attachPerPageListeners();
   }
   
   createPaginationControls('invoicesPaginationControls', paginatedData.currentPage, paginatedData.totalPages, (page) => {
@@ -6253,8 +6710,14 @@ function createTimeAnalyticsHTML() {
         <span class="count-label">Invoices</span>
       </div>
       <div class="totals-section">
-        <span id="${period.key}Amount" class="total-value">PKR 0</span>
-        <span id="${period.key}Tax" class="tax-value">PKR 0</span>
+        <div class="total-item">
+          <span class="total-label">Total Amount:</span>
+          <span id="${period.key}Amount" class="total-value amount">PKR 0</span>
+        </div>
+        <div class="total-item">
+          <span class="total-label">Sales Tax:</span>
+          <span id="${period.key}Tax" class="total-value tax">PKR 0</span>
+        </div>
       </div>
     </div>
   `).join('');
@@ -6476,11 +6939,11 @@ function updateInvoiceStatus() {
 // Initialize invoice filters
 function initInvoiceFilters() {
   const searchInput = document.getElementById('invoiceSearch');
-  const statusFilter = document.getElementById('statusFilter');
+  const statusFilter = document.getElementById('invoiceStatusFilter'); // Updated to correct ID
+  const typeFilter = document.getElementById('invoiceTypeFilter'); // Added type filter
   const dateFilter = document.getElementById('dateFilter');
   const customDateRange = document.getElementById('customDateRange');
   const applyDateFilter = document.getElementById('applyDateFilter');
-   const perPageFilter = document.getElementById('invoicesPerPage');
 
 
   // Handle search input
@@ -6490,6 +6953,11 @@ function initInvoiceFilters() {
 
   // Handle status filter
   statusFilter?.addEventListener('change', () => {
+    populateInvoicesTable();
+  });
+
+  // Handle type filter
+  typeFilter?.addEventListener('change', () => {
     populateInvoicesTable();
   });
 
@@ -6506,14 +6974,6 @@ function initInvoiceFilters() {
   // Handle custom date range apply button
   applyDateFilter?.addEventListener('click', () => {
     populateInvoicesTable();
-  });
-
-  // Handle filters
-  [perPageFilter].forEach(filter => {
-    filter?.addEventListener('change', () => {
-      currentInvoicesPage = 1;
-      populateInvoicesTable();
-    });
   });
 
 }
@@ -6696,6 +7156,17 @@ function sortProducts(field) {
     window.productSortField = field;
     window.productSortDirection = 'asc';
   }
+  
+  // Update sort icons for product table
+  document.querySelectorAll('[id^="sort-product-"]').forEach(icon => {
+    icon.className = 'fas fa-sort';
+  });
+  
+  const sortIcon = document.getElementById(`sort-product-${field}`);
+  if (sortIcon) {
+    sortIcon.className = `fas fa-sort-${window.productSortDirection === 'asc' ? 'up' : 'down'}`;
+  }
+  
   window.populateProductsTable();
 }
 
@@ -6760,7 +7231,8 @@ window.populateProductsTable = async function populateProductsTable() {
     tbody.appendChild(row);
     const paginationInfo = document.getElementById('productsPaginationInfo');
     if (paginationInfo) {
-      paginationInfo.textContent = 'Showing 0-0 of 0 items';
+      paginationInfo.innerHTML = 'Showing <select id="productsPerPage" class="per-page-select"><option value="1">1</option><option value="10">10</option><option value="20" selected>20</option><option value="50">50</option><option value="100">100</option><option value="all">All</option></select> of 0 items';
+      attachPerPageListeners();
     }
     return;
   }
@@ -6783,13 +7255,13 @@ window.populateProductsTable = async function populateProductsTable() {
       <td>${stockDisplay}</td>
       <td><span class="status-badge ${product.status === 'Active' ? 'status-active' : 'status-inactive'}">${product.status || 'Active'}</span></td>
       <td class="action-cell">
-        <button class="btn btn-sm btn-primary" onclick="addProductToInvoiceFromTable('${product.id}')" title="Add to Invoice">
+        <button class="btn btn-view" onclick="addProductToInvoiceFromTable('${product.id}')" title="Add to Invoice">
           <i class="fas fa-plus"></i>
         </button>
-        <button class="btn btn-sm btn-warning" onclick="editProduct('${product.id}')">
+        <button class="btn btn-edit" onclick="editProduct('${product.id}')" title="Edit Product">
           <i class="fas fa-edit"></i>
         </button>
-        <button class="btn btn-sm btn-danger" onclick="deleteProduct('${product.id}')">
+        <button class="btn btn-delete" onclick="confirmDeleteProduct('${product.id}')" title="Delete Product">
           <i class="fas fa-trash"></i>
         </button>
       </td>
@@ -6800,11 +7272,14 @@ window.populateProductsTable = async function populateProductsTable() {
   // Update pagination info and controls
   const paginationInfo = document.getElementById('productsPaginationInfo');
   if (paginationInfo) {
+    const perPageText = perPage === 'all' ? 'All' : perPage;
     if (perPage === 'all') {
-      paginationInfo.textContent = `Showing 1-${filteredProducts.length} of ${filteredProducts.length} items`;
+      paginationInfo.innerHTML = `Showing <select id="productsPerPage" class="per-page-select"><option value="1">1</option><option value="10">10</option><option value="20">20</option><option value="50">50</option><option value="100">100</option><option value="all" selected>All</option></select> of ${filteredProducts.length} items`;
     } else {
-      paginationInfo.textContent = `Showing ${paginatedData.startIndex}-${paginatedData.endIndex} of ${paginatedData.totalItems} items`;
+      paginationInfo.innerHTML = `Showing <select id="productsPerPage" class="per-page-select"><option value="1"${perPage==='1'?' selected':''}>1</option><option value="10"${perPage==='10'?' selected':''}>10</option><option value="20"${perPage==='20'?' selected':''}>20</option><option value="50"${perPage==='50'?' selected':''}>50</option><option value="100"${perPage==='100'?' selected':''}>100</option><option value="all">All</option></select> of ${paginatedData.totalItems} items`;
     }
+    // Attach event listener after updating HTML
+    attachPerPageListeners();
   }
   
   createPaginationControls('productsPaginationControls', paginatedData.currentPage, paginatedData.totalPages, (page) => {
@@ -7333,3 +7808,255 @@ async function generateSingleInvoicePDF(doc, invoice, isNewDoc = true) {
     doc.text(`FBR Invoice Number: ${invoice.invoiceNumber}`, margin, y);
   }
 }
+
+// === Global Exports for Components ===
+// Export essential functions and objects to window for use by components
+window.dbGetAll = dbGetAll;
+window.dbGet = dbGet;
+window.dbSet = dbSet;
+window.dbDelete = dbDelete;
+window.dbSetAll = dbSetAll;
+window.STORE_NAMES = STORE_NAMES;
+window.exportData = exportData;
+window.formatDateForDisplay = formatDateForDisplay;
+window.showToast = showToast;
+
+// Expose table population functions for component integration
+window.populateInvoicesTable = populateInvoicesTable;
+window.populateProductsTable = populateProductsTable;
+window.populateSellersTable = populateSellersTable;
+window.populateBuyersTable = populateBuyersTable;
+
+// Expose modal functions for component action buttons
+window.openAddProductModal = openAddProductModal;
+window.openAddSellerModal = () => {
+  const addSellerBtn = document.getElementById('addSellerBtn');
+  if (addSellerBtn) addSellerBtn.click();
+};
+window.openAddBuyerModal = () => {
+  const addBuyerBtn = document.getElementById('addBuyerBtn');
+  if (addBuyerBtn) addBuyerBtn.click();
+};
+
+// Expose navigation function
+window.switchToCreateInvoiceTab = switchToCreateInvoiceTab;
+
+// Make functions global for HTML onclick handlers
+window.removeScenarioChip = removeScenarioChip;
+window.populateTablesAndDashboard = populateTablesAndDashboard;
+window.initAppComponents = initAppComponents;
+
+console.log('✓ Database functions exported globally for components');
+console.log('✓ FBR Digital Invoicing App initialized successfully');
+
+// Test functions for modal functionality - can be called from console for testing
+window.testErrorModal = function() {
+  const testError = new Error("This is a test validation error with detailed information");
+  const testErrorDetails = {
+    errorCode: "TEST001",
+    timestamp: new Date().toISOString(),
+    submissionPayload: {
+      invoiceRefNo: "SI-TEST-001",
+      invoiceDate: "2024-01-15",
+      currency: "PKR",
+      items: [
+        {
+          productDescription: "Test Product",
+          quantity: 1,
+          unitPrice: 1000,
+          taxRate: 17
+        }
+      ]
+    },
+    validationErrors: [
+      {
+        field: "seller.ntn",
+        message: "Invalid NTN format",
+        code: "INVALID_NTN"
+      },
+      {
+        field: "buyer.registrationStatus",
+        message: "Buyer registration status is inactive",
+        code: "INACTIVE_BUYER"
+      },
+      {
+        field: "items[0].hsCode",
+        message: "HS Code is required for all items",
+        code: "MISSING_HS_CODE"
+      }
+    ],
+    response: {
+      status: "failed",
+      statusCode: 400,
+      message: "Test validation failed with multiple errors",
+      details: "This is a comprehensive test error to verify the full-width modal functionality. The error details container should now take up the full width and height available in the modal, making it easier to read detailed error information, stack traces, and debugging data.",
+      stackTrace: "Error: Test validation failed\n    at testErrorModal (app.js:7689)\n    at HTMLButtonElement.<anonymous> (app.js:7712)\n    at Object.handleSubmissionError (app.js:1746)\n    at Object.displayErrorModal (app.js:1752)"
+    }
+  };
+  
+  console.log("Testing error modal with detailed sample data:", testErrorDetails);
+  handleSubmissionError(testError, testErrorDetails);
+};
+
+// Test function for success modal
+window.testSuccessModal = function() {
+  const testResponse = {
+    fbrInvoiceNumber: "TEST-12345",
+    invoiceNumber: "SI-TEST-001", 
+    dated: new Date().toISOString(),
+    status: "submitted",
+    validationResponse: {
+      invoiceStatuses: [
+        {
+          itemSNo: "1",
+          statusCode: "200",
+          invoiceNo: "SI-TEST-001",
+          status: "Success",
+          errorCode: "",
+          error: ""
+        }
+      ]
+    }
+  };
+  
+  console.log("Testing success modal with sample data:", testResponse);
+  displaySuccessModal(testResponse);
+};
+
+console.log('✓ Modal test functions available:');
+console.log('  - testErrorModal(): Test error modal display');
+console.log('  - testSuccessModal(): Test success modal display');
+console.log('  - testPreviewModal(): Test preview modal initialization');
+console.log('  - testTabSwitching(): Test tab switching functionality in success modal');
+console.log('');
+console.log('🔧 Quick test: Run testTabSwitching() to verify tab functionality');
+console.log('📋 Quick test: Run testSuccessModal() to test success modal');
+
+// Simple quick test function that can be called immediately
+window.quickTabTest = function() {
+  console.log('🚀 Running quick tab test...');
+  testSuccessModal();
+  setTimeout(() => {
+    console.log('Testing tab clicks...');
+    const jsonBtn = document.querySelector('.tab-nav button[data-tab="json-tab"]');
+    const tableBtn = document.querySelector('.tab-nav button[data-tab="table-tab"]');
+    
+    if (jsonBtn && tableBtn) {
+      console.log('Clicking JSON tab...');
+      jsonBtn.click();
+      setTimeout(() => {
+        console.log('Clicking Table tab...');
+        tableBtn.click();
+        console.log('✅ Quick test completed - check if tabs switched!');
+      }, 1000);
+    }
+  }, 1000);
+};
+
+// Test function for tab switching
+window.testTabSwitching = function() {
+  console.log('=== Testing tab switching functionality ===');
+  
+  // First open the success modal with test data
+  const testResponse = {
+    fbrInvoiceNumber: "TAB-TEST-12345",
+    invoiceNumber: "SI-TAB-TEST-001", 
+    dated: new Date().toISOString(),
+    status: "submitted",
+    validationResponse: {
+      invoiceStatuses: [
+        {
+          itemSNo: "1",
+          statusCode: "200",
+          invoiceNo: "SI-TAB-TEST-001",
+          status: "Success",
+          errorCode: "",
+          error: ""
+        }
+      ]
+    }
+  };
+  
+  console.log('Opening success modal with test data...');
+  displaySuccessModal(testResponse);
+  
+  // Test tab switching after a short delay
+  setTimeout(() => {
+    console.log('=== Starting tab button tests ===');
+    
+    // Test clicking JSON tab
+    const jsonTabBtn = document.querySelector('.tab-nav button[data-tab="json-tab"]');
+    const tableTabBtn = document.querySelector('.tab-nav button[data-tab="table-tab"]');
+    const jsonTabContent = document.getElementById('json-tab');
+    const tableTabContent = document.getElementById('table-tab');
+    
+    console.log('Elements found:', {
+      jsonTabBtn: !!jsonTabBtn,
+      tableTabBtn: !!tableTabBtn,
+      jsonTabContent: !!jsonTabContent,
+      tableTabContent: !!tableTabContent
+    });
+    
+    if (jsonTabBtn && tableTabBtn && jsonTabContent && tableTabContent) {
+      console.log('\n=== Testing JSON Tab Click ===');
+      jsonTabBtn.click();
+      
+      setTimeout(() => {
+        const jsonActive = jsonTabBtn.classList.contains('tab-active');
+        const jsonVisible = jsonTabContent.classList.contains('active');
+        const tableInactive = !tableTabBtn.classList.contains('tab-active');
+        const tableHidden = !tableTabContent.classList.contains('active');
+        
+        console.log('JSON tab results:', {
+          buttonActive: jsonActive,
+          contentVisible: jsonVisible,
+          jsonDisplay: getComputedStyle(jsonTabContent).display,
+          tableDisplay: getComputedStyle(tableTabContent).display
+        });
+        
+        console.log('\n=== Testing Table Tab Click ===');
+        tableTabBtn.click();
+        
+        setTimeout(() => {
+          const tableActive = tableTabBtn.classList.contains('tab-active');
+          const tableVisible = tableTabContent.classList.contains('active');
+          const jsonInactive = !jsonTabBtn.classList.contains('tab-active');
+          const jsonHidden = !jsonTabContent.classList.contains('active');
+          
+          console.log('Table tab results:', {
+            buttonActive: tableActive,
+            contentVisible: tableVisible,
+            tableDisplay: getComputedStyle(tableTabContent).display,
+            jsonDisplay: getComputedStyle(jsonTabContent).display
+          });
+          
+          const allTestsPassed = jsonActive && jsonVisible && tableInactive && tableHidden && 
+                                 tableActive && tableVisible && jsonInactive && jsonHidden;
+          
+          if (allTestsPassed) {
+            console.log('\n✅ ALL TAB SWITCHING TESTS PASSED!');
+            showToast('success', 'Tab Test Complete', 'All tab switching functionality working correctly!');
+          } else {
+            console.log('\n❌ Some tab switching tests failed. Check logs above.');
+            showToast('error', 'Tab Test Failed', 'Some tab functionality issues detected. Check console.');
+          }
+        }, 200);
+      }, 200);
+    } else {
+      console.error('❌ Required tab elements not found!');
+      showToast('error', 'Tab Test Failed', 'Required elements not found');
+    }
+  }, 1000);
+};
+
+// Test function for preview modal initialization
+window.testPreviewModal = function() {
+  try {
+    initPreviewModal();
+    console.log('Preview modal initialization test passed');
+    showToast('success', 'Test Passed', 'Preview modal initialized successfully');
+  } catch (error) {
+    console.error('Preview modal initialization test failed:', error);
+    showToast('error', 'Test Failed', 'Preview modal initialization failed: ' + error.message);
+  }
+};

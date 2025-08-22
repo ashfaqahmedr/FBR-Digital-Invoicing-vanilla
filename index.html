@@ -12,7 +12,16 @@
 
   
   <link rel="stylesheet" href="index.css">
+  <link rel="stylesheet" href="components/components.css">
 
+  <!-- Component Scripts - DISABLED to restore original functionality -->
+  <!-- 
+  <script src="components/ExportComponent.js"></script>
+  <script src="components/FilterComponent.js"></script>
+  <script src="components/TableComponent.js"></script>
+  <script src="components/tableConfigs.js"></script>
+  <script src="components/componentInit.js"></script>
+  -->
 
   <script>
     window.jsPDF = window.jspdf.jsPDF;
@@ -21,13 +30,13 @@
   </script>
 
 </head>
-<body class="light-theme; overflow: hidden;">
+<body class="light-theme">
   <!-- Toast Container -->
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Header -->
   <header>
-    <div class="container">
+    <div class="header">
       <div class="header-content">
         <div class="logo-container">
           <div class="logo">
@@ -35,7 +44,6 @@
           </div>
           <div class="header-text">
             <h1>FBR Digital Invoicing</h1>
-            <p>Create and manage your FBR invoices</p>
           </div>
         </div>
         
@@ -48,15 +56,15 @@
             </label>
             <span class="mode-label">Production</span>
           </div>
-        </div>
-
-        <div class="mode-toggle">
-          <span class="mode-label">Light</span>
-          <label class="switch">
-            <input type="checkbox" id="themeToggle">
-            <span class="slider round"></span>
-          </label>
-          <span class="mode-label">Dark</span>
+          
+          <div class="mode-toggle">
+            <span class="mode-label">Light</span>
+            <label class="switch">
+              <input type="checkbox" id="themeToggle">
+              <span class="slider round"></span>
+            </label>
+            <span class="mode-label">Dark</span>
+          </div>
         </div>
       </div>
     </div>
@@ -100,7 +108,7 @@
     
     <!-- Create Invoice Tab -->
     <div id="invoice-tab" class="tab-content">
-      <div class="container" style="max-height: 85vh; overflow-y: auto; padding-right: 10px; padding-bottom: 10px;">
+      <div class="container" style="max-height: calc(100vh - 150px); overflow-y: auto; padding-right: 10px; padding-bottom: 10px;">
         <div class="card">
           <div class="card-header">
             <h2><i class="fas fa-building"></i> Seller & Buyer Information</h2>
@@ -283,249 +291,260 @@
     
 
     <!-- Manage Invoices Tab -->
-    <div id="invoices-tab" class="tab-content">
-      <div class="card" style="overflow: hidden;">  
+    <div id="invoices-tab" class="tab-content table-tab">
+      <div class="card">
         <div class="card-header">
-          <h2><i class="fas fa-file-invoice-dollar"></i> Invoices</h2>
+          <h2><i class="fas fa-file-invoice-dollar"></i> Manage Invoices</h2>
         </div>
-
-        <div class="table-container">
-          <!-- Search and Filter Section -->
-          <div class="filters-section">
-            <div class="form-row" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
-              <!-- Search Input -->
-              <div class="form-group" style="width: 300px;">
-                <div class="search-box" style="position: relative; display: flex; align-items: center;">
-                  <i class="fas fa-search" style="position: absolute; left: 10px; z-index: 1; color: #666;"></i>
-                  <input type="text" id="invoiceSearch" placeholder="Search invoices..." style="padding-left: 35px; width: 100%; height: 38px; border: 1px solid #ddd; border-radius: 4px;">
-                </div>
-              </div>
-
-              <!-- Status Filter -->
-              <div class="form-group" style="flex: 1; min-width: 120px;">
-                <select id="statusFilter" class="form-control">
-                  <option value="all">All Status</option>
-                  <option value="draft">Draft</option>
-                  <option value="submitted">Submitted</option>
-                </select>
-              </div>
-
-              <!-- Date Filter -->
-              <div class="form-group" style="flex: 1; min-width: 140px;">
-                <select id="dateFilter" class="form-control">
-                  <option value="all">All Dates</option>
-                  <option value="today">Today</option>
-                  <option value="yesterday">Yesterday</option>
-                  <option value="thisWeek">This Week</option>
-                  <option value="lastWeek">Last Week</option>
-                  <option value="thisMonth">This Month</option>
-                  <option value="lastMonth">Last Month</option>
-                  <option value="thisYear">This Year</option>
-                  <option value="lastYear">Last Year</option>
-                  <option value="custom">Custom Range</option>
-                </select>
-              </div>
-
-              <!-- Items per page -->
-              <div class="form-group" style="flex: 0 0 auto; min-width: 100px;">
-                <select id="invoicesPerPage" class="form-control">
-                  <option value="all">All</option>
-                  <option value="1">1</option>
-                  <option value="10">10</option>
-                  <option value="20" selected>20</option>
-                  <option value="50">50</option>
-                  <option value="100">100</option>
-                </select>
-              </div>
-
-              <!-- Add Button -->
-              <div class="form-group" style="flex: 0 0 auto;">
-                <button class="btn btn-success" onclick="switchToCreateInvoiceTab()">
-                  <i class="fas fa-plus"></i> Add Invoice
+        
+        <!-- Filters Section -->
+        <div class="filter-container">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="invoiceSearch">Search:</label>
+              <input type="text" id="invoiceSearch" placeholder="Search invoices...">
+            </div>
+            <div class="form-group">
+              <label for="invoiceStatusFilter">Status:</label>
+              <select id="invoiceStatusFilter">
+                <option value="all">All Status</option>
+                <option value="Draft">Draft</option>
+                <option value="Submitted">Submitted</option>
+                <option value="Failed">Failed</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="invoiceTypeFilter">Type:</label>
+              <select id="invoiceTypeFilter">
+                <option value="all">All Types</option>
+                <option value="Sale Invoice">Sale Invoice</option>
+                <option value="Debit Note">Debit Note</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="dateFilter">Date:</label>
+              <select id="dateFilter">
+                <option value="all">All Dates</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="thisWeek">This Week</option>
+                <option value="lastWeek">Last Week</option>
+                <option value="thisMonth">This Month</option>
+                <option value="lastMonth">Last Month</option>
+                <option value="thisYear">This Year</option>
+                <option value="lastYear">Last Year</option>
+                <option value="custom">Custom Range</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <button class="btn btn-success" onclick="switchToCreateInvoiceTab()">
+                <i class="fas fa-plus"></i> Add Invoice
+              </button>
+            </div>
+            <div class="export-actions">
+              <div class="export-dropdown">
+                <button class="dropdown-toggle" type="button">
+                  <i class="fas fa-download"></i> Export
                 </button>
-                <div class="dropdown" style="display: inline-block; margin-left: 10px;">
-                  <button class="btn btn-primary dropdown-toggle" type="button" id="exportInvoicesBtn" data-toggle="dropdown">
-                    <i class="fas fa-download"></i> Export
-                  </button>
-                  <div class="dropdown-menu">
-                    <a class="dropdown-item" href="#" onclick="exportData('invoices', 'json')"><i class="fas fa-file-code"></i> JSON</a>
-                    <a class="dropdown-item" href="#" onclick="exportData('invoices', 'excel')"><i class="fas fa-file-excel"></i> Excel</a>
-                    <a class="dropdown-item" href="#" onclick="exportData('invoices', 'pdf')"><i class="fas fa-file-pdf"></i> PDF</a>
-                  </div>
+                <div class="dropdown-menu">
+                  <a class="dropdown-item" onclick="exportInvoices('json')">
+                    <i class="fas fa-file-code"></i> Export as JSON
+                  </a>
+                  <a class="dropdown-item" onclick="exportInvoices('excel')">
+                    <i class="fas fa-file-excel"></i> Export as Excel
+                  </a>
+                  <a class="dropdown-item" onclick="exportInvoices('pdf')">
+                    <i class="fas fa-file-pdf"></i> Export as PDF
+                  </a>
                 </div>
               </div>
             </div>
-
-            <!-- Custom Date Range (initially hidden) -->
-            <div id="customDateRange" class="form-row" style="display: none; margin-top: 10px;">
-              <div class="form-group">
-                <input type="date" id="dateFrom" class="form-control">
-              </div>
-              <div style="padding: 0 10px; line-height: 38px;">to</div>
-              <div class="form-group">
-                <input type="date" id="dateTo" class="form-control">
-              </div>
-              <div class="form-group">
-                <button class="btn btn-primary" id="applyDateFilter">
-                  <i class="fas fa-check"></i> Apply
-                </button>
-              </div>
+          </div>
+          <!-- Custom Date Range Section (initially hidden) -->
+          <div id="customDateRange" class="form-row" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid #dee2e6;">
+            <div class="form-group">
+              <label for="dateFrom">From:</label>
+              <input type="date" id="dateFrom">
+            </div>
+            <div class="form-group">
+              <label for="dateTo">To:</label>
+              <input type="date" id="dateTo">
+            </div>
+            <div class="form-group">
+              <button class="btn btn-primary" id="applyDateFilter">
+                <i class="fas fa-check"></i> Apply
+              </button>
             </div>
           </div>
-          
-          <div class="table-wrapper">
-            <table class="items-table" id="invoicesTable">
-              <thead>
-                <tr>
-                  <th style="cursor: pointer;" onclick="sortInvoices('date')">
-                    Date <i class="fas fa-sort" id="sort-invoice-date"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortInvoices('reference')">
-                    Reference <i class="fas fa-sort" id="sort-invoice-reference"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortInvoices('buyer')">
-                    Buyer <i class="fas fa-sort" id="sort-invoice-buyer"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortInvoices('total')">
-                    Total <i class="fas fa-sort" id="sort-invoice-total"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortInvoices('status')">
-                    Status <i class="fas fa-sort" id="sort-invoice-status"></i>
-                  </th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="invoicesTableBody">
-                <!-- Invoices will be populated here -->
-              </tbody>
-            </table>
+        </div>
+        
+        <!-- Table Section -->
+        <div class="table-wrapper">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th onclick="sortInvoices('id')" style="cursor: pointer;">
+                  ID <i class="fas fa-sort" id="sort-invoice-id"></i>
+                </th>
+                <th onclick="sortInvoices('invoiceRefNo')" style="cursor: pointer;">
+                  Inv. Ref. No. <i class="fas fa-sort" id="sort-invoice-invoiceRefNo"></i>
+                </th>
+                <th onclick="sortInvoices('invoiceDate')" style="cursor: pointer;">
+                  Date <i class="fas fa-sort" id="sort-invoice-invoiceDate"></i>
+                </th>
+                <th onclick="sortInvoices('invoiceType')" style="cursor: pointer;">
+                  Inv. Type <i class="fas fa-sort" id="sort-invoice-invoiceType"></i>
+                </th>
+                <th onclick="sortInvoices('totalAmount')" style="cursor: pointer;">
+                  Amount <i class="fas fa-sort" id="sort-invoice-totalAmount"></i>
+                </th>
+                <th onclick="sortInvoices('status')" style="cursor: pointer;">
+                  Status <i class="fas fa-sort" id="sort-invoice-status"></i>
+                </th>
+                <th onclick="sortInvoices('invoiceNumber')" style="cursor: pointer;">
+                  FBR Inv. No. <i class="fas fa-sort" id="sort-invoice-invoiceNumber"></i>
+                </th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="invoicesTableBody">
+              <!-- Data will be populated here -->
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Pagination Section - Positioned at Bottom after Table -->
+        <div class="pagination-container">
+          <div class="pagination-info" id="invoicesPaginationInfo">Showing 
+            <select id="invoicesPerPage" class="per-page-select">
+              <option value="1">1</option>
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="all">All</option>
+            </select>
+             of 0 items
           </div>
-          
-          <!-- Pagination -->
-          <div class="pagination-container">
-            <div class="pagination-info" id="invoicesPaginationInfo">Showing 0 of 0 items</div>
-            <div class="pagination-controls" id="invoicesPaginationControls">
-              <!-- Pagination buttons will be added here -->
-            </div>
+          <div class="pagination-controls" id="invoicesPaginationControls">
+            <!-- Pagination buttons will be added here -->
           </div>
         </div>
       </div>
     </div>
     
     <!-- Manage Products Tab -->
-    <div id="products-tab" class="tab-content">
+    <div id="products-tab" class="tab-content table-tab">
       <div class="card">
         <div class="card-header">
-          <h2><i class="fas fa-box"></i> Products</h2>
+          <h2><i class="fas fa-box"></i> Manage Products</h2>
         </div>
-
-        <div class="table-container">
-          <!-- Search and Filter Section -->
-          <div class="filters-section">
-            <div class="form-row" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
-              <!-- Search Input -->
-              <div class="form-group" style="width: 300px;">
-                <div class="search-box" style="position: relative; display: flex; align-items: center;">
-                  <i class="fas fa-search" style="position: absolute; left: 10px; z-index: 1; color: #666;"></i>
-                  <input type="text" id="productSearch" placeholder="Search products..." style="padding-left: 35px; width: 100%; height: 38px; border: 1px solid #ddd; border-radius: 4px;">
-                </div>
-              </div>
-
-              <!-- Product Type Filter -->
-              <div class="form-group" style="flex: 1; min-width: 120px;">
-                <select id="productTypeFilter" class="form-control">
-                  <option value="all">All Types</option>
-                  <option value="Goods">Goods</option>
-                  <option value="Services">Services</option>
-                </select>
-              </div>
-
-              <!-- Status Filter -->
-              <div class="form-group" style="flex: 1; min-width: 120px;">
-                <select id="productStatusFilter" class="form-control">
-                  <option value="all">All Status</option>
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
-
-              <!-- Items per page -->
-              <div class="form-group" style="flex: 0 0 auto; min-width: 100px;">
-                <select id="productsPerPage" class="form-control">
-                  <option value="all">All</option>
-                  <option value="1">1</option>
-                  <option value="10">10</option>
-                  <option value="20" selected>20</option>
-                  <option value="50">50</option>
-                  <option value="100">100</option>
-                </select>
-              </div>
-
-              <!-- Add Button -->
-              <div class="form-group" style="flex: 0 0 auto;">
-                <button class="btn btn-success" id="addProductBtn">
-                  <i class="fas fa-plus"></i> Add Product
+        
+        <!-- Filters Section -->
+        <div class="filter-container">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="productSearch">Search:</label>
+              <input type="text" id="productSearch" placeholder="Search products...">
+            </div>
+            <div class="form-group">
+              <label for="productTypeFilter">Type:</label>
+              <select id="productTypeFilter">
+                <option value="all">All Types</option>
+                <option value="Goods">Goods</option>
+                <option value="Services">Services</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="productStatusFilter">Status:</label>
+              <select id="productStatusFilter">
+                <option value="all">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <button class="btn btn-success" id="addProductBtn">
+                <i class="fas fa-plus"></i> Add Product
+              </button>
+            </div>
+            <div class="export-actions">
+              <div class="export-dropdown">
+                <button class="dropdown-toggle" type="button">
+                  <i class="fas fa-download"></i> Export
                 </button>
-                <div class="dropdown" style="display: inline-block; margin-left: 10px;">
-                  <button class="btn btn-primary dropdown-toggle" type="button" id="exportProductsBtn" data-toggle="dropdown">
-                    <i class="fas fa-download"></i> Export
-                  </button>
-                  <div class="dropdown-menu">
-                    <a class="dropdown-item" href="#" onclick="exportData('products', 'json')"><i class="fas fa-file-code"></i> JSON</a>
-                    <a class="dropdown-item" href="#" onclick="exportData('products', 'excel')"><i class="fas fa-file-excel"></i> Excel</a>
-                    <a class="dropdown-item" href="#" onclick="exportData('products', 'pdf')"><i class="fas fa-file-pdf"></i> PDF</a>
-                  </div>
+                <div class="dropdown-menu">
+                  <a class="dropdown-item" onclick="exportProducts('json')">
+                    <i class="fas fa-file-code"></i> Export as JSON
+                  </a>
+                  <a class="dropdown-item" onclick="exportProducts('excel')">
+                    <i class="fas fa-file-excel"></i> Export as Excel
+                  </a>
+                  <a class="dropdown-item" onclick="exportProducts('pdf')">
+                    <i class="fas fa-file-pdf"></i> Export as PDF
+                  </a>
                 </div>
               </div>
             </div>
           </div>
-          
-          <div class="table-wrapper">
-            <table class="items-table">
-              <thead>
-                <tr>
-                  <th style="cursor: pointer;" onclick="sortProducts('hsCode')">
-                    HS Code <i class="fas fa-sort" id="sort-product-hsCode"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortProducts('productName')">
-                    Product Name <i class="fas fa-sort" id="sort-product-productName"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortProducts('productType')">
-                    Type <i class="fas fa-sort" id="sort-product-productType"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortProducts('uom')">
-                    UoM <i class="fas fa-sort" id="sort-product-uom"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortProducts('purchaseRate')">
-                    Purchase Rate <i class="fas fa-sort" id="sort-product-purchaseRate"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortProducts('saleRate')">
-                    Sale Rate <i class="fas fa-sort" id="sort-product-saleRate"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortProducts('taxRate')">
-                    Tax Rate <i class="fas fa-sort" id="sort-product-taxRate"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortProducts('openingStock')">
-                    Stock <i class="fas fa-sort" id="sort-product-openingStock"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortProducts('status')">
-                    Status <i class="fas fa-sort" id="sort-product-status"></i>
-                  </th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="productsTableBody">
-                <!-- Products will be populated here -->
-              </tbody>
-            </table>
+        </div>
+        
+        <!-- Table Section -->
+        <div class="table-wrapper">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th onclick="sortProducts('hsCode')" style="cursor: pointer;">
+                  HS Code <i class="fas fa-sort" id="sort-product-hsCode"></i>
+                </th>
+                <th onclick="sortProducts('productName')" style="cursor: pointer;">
+                  Product Name <i class="fas fa-sort" id="sort-product-productName"></i>
+                </th>
+                <th onclick="sortProducts('type')" style="cursor: pointer;">
+                  Type <i class="fas fa-sort" id="sort-product-type"></i>
+                </th>
+                <th onclick="sortProducts('uom')" style="cursor: pointer;">
+                  UoM <i class="fas fa-sort" id="sort-product-uom"></i>
+                </th>
+                <th onclick="sortProducts('purchaseRate')" style="cursor: pointer;">
+                  Purchase Rate <i class="fas fa-sort" id="sort-product-purchaseRate"></i>
+                </th>
+                <th onclick="sortProducts('saleRate')" style="cursor: pointer;">
+                  Sale Rate <i class="fas fa-sort" id="sort-product-saleRate"></i>
+                </th>
+                <th onclick="sortProducts('taxRate')" style="cursor: pointer;">
+                  Tax Rate <i class="fas fa-sort" id="sort-product-taxRate"></i>
+                </th>
+                <th onclick="sortProducts('stock')" style="cursor: pointer;">
+                  Stock <i class="fas fa-sort" id="sort-product-stock"></i>
+                </th>
+                <th onclick="sortProducts('status')" style="cursor: pointer;">
+                  Status <i class="fas fa-sort" id="sort-product-status"></i>
+                </th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="productsTableBody">
+              <!-- Data will be populated here -->
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Pagination Section - Positioned at Bottom after Table -->
+        <div class="pagination-container">
+          <div class="pagination-info" id="productsPaginationInfo">Showing 
+            <select id="productsPerPage" class="per-page-select">
+              <option value="1">1</option>
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="all">All</option>
+            </select>
+             of 0 items
           </div>
-          
-          <!-- Pagination -->
-          <div class="pagination-container">
-            <div class="pagination-info" id="productsPaginationInfo">Showing 0 of 0 items</div>
-            <div class="pagination-controls" id="productsPaginationControls">
-              <!-- Pagination buttons will be added here -->
-            </div>
+          <div class="pagination-controls" id="productsPaginationControls">
+            <!-- Pagination buttons will be added here -->
           </div>
         </div>
       </div>
@@ -676,219 +695,227 @@
     </div>
     
     <!-- Manage Sellers Tab -->
-    <div id="sellers-tab" class="tab-content">
+    <div id="sellers-tab" class="tab-content table-tab">
       <div class="card">
         <div class="card-header">
-          <h2><i class="fas fa-user-tie"></i> Sellers</h2>
+          <h2><i class="fas fa-user-tie"></i> Manage Sellers</h2>
         </div>
         
-        <div class="table-container">
-          <!-- Search and Filter Section -->
-          <div class="filters-section">
-            <div class="form-row" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
-              <!-- Search Input -->
-              <div class="form-group" style="width: 300px;">
-                <div class="search-box" style="position: relative; display: flex; align-items: center;">
-                  <i class="fas fa-search" style="position: absolute; left: 10px; z-index: 1; color: #666;"></i>
-                  <input type="text" id="sellerSearch" placeholder="Search sellers..." style="padding-left: 35px; width: 100%; height: 38px; border: 1px solid #ddd; border-radius: 4px;">
-                </div>
-              </div>
-
-              <!-- Province Filter -->
-              <div class="form-group" style="flex: 1; min-width: 140px;">
-                <select id="sellerProvinceFilter" class="form-control">
-                  <option value="all">All Provinces</option>
-                </select>
-              </div>
-
-              <!-- Status Filter -->
-              <div class="form-group" style="flex: 1; min-width: 120px;">
-                <select id="sellerStatusFilter" class="form-control">
-                  <option value="all">All Status</option>
-                  <option value="Active">Active</option>
-                  <option value="In-Active">In-Active</option>
-                </select>
-              </div>
-
-              <!-- Registration Status Filter -->
-              <div class="form-group" style="flex: 1; min-width: 180px;">
-                <select id="sellerRegStatusFilter" class="form-control">
-                  <option value="all">All Registration Status</option>
-                  <option value="Registered">Registered</option>
-                  <option value="unregistered">Unregistered</option>
-                </select>
-              </div>
-
-              <!-- Items per page -->
-              <div class="form-group" style="flex: 0 0 auto; min-width: 100px;">
-                <select id="sellersPerPage" class="form-control">
-                  <option value="all">All</option>
-                  <option value="1">1</option>
-                  <option value="10">10</option>
-                  <option value="20" selected>20</option>
-                  <option value="50">50</option>
-                  <option value="100">100</option>
-                </select>
-              </div>
-
-              <!-- Add Button -->
-              <div class="form-group" style="flex: 0 0 auto;">
-                <button class="btn btn-success" id="addSellerBtn">
-                  <i class="fas fa-plus"></i> Add Seller
+        <!-- Filters Section -->
+        <div class="filter-container">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="sellerSearch">Search:</label>
+              <input type="text" id="sellerSearch" placeholder="Search sellers...">
+            </div>
+            <div class="form-group">
+              <label for="sellerProvinceFilter">Province:</label>
+              <select id="sellerProvinceFilter">
+                <option value="all">All Provinces</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="sellerStatusFilter">Status:</label>
+              <select id="sellerStatusFilter">
+                <option value="all">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="sellerRegStatusFilter">Registration:</label>
+              <select id="sellerRegStatusFilter">
+                <option value="all">All</option>
+                <option value="Registered">Registered</option>
+                <option value="Unregistered">Unregistered</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <button class="btn btn-success" id="addSellerBtn">
+                <i class="fas fa-plus"></i> Add Seller
+              </button>
+            </div>
+            <div class="export-actions">
+              <div class="export-dropdown">
+                <button class="dropdown-toggle" type="button">
+                  <i class="fas fa-download"></i> Export
                 </button>
-                <div class="dropdown" style="display: inline-block; margin-left: 10px;">
-                  <button class="btn btn-primary dropdown-toggle" type="button" id="exportSellersBtn" data-toggle="dropdown">
-                    <i class="fas fa-download"></i> Export
-                  </button>
-                  <div class="dropdown-menu">
-                    <a class="dropdown-item" href="#" onclick="exportData('sellers', 'json')"><i class="fas fa-file-code"></i> JSON</a>
-                    <a class="dropdown-item" href="#" onclick="exportData('sellers', 'excel')"><i class="fas fa-file-excel"></i> Excel</a>
-                    <a class="dropdown-item" href="#" onclick="exportData('sellers', 'pdf')"><i class="fas fa-file-pdf"></i> PDF</a>
-                  </div>
+                <div class="dropdown-menu">
+                  <a class="dropdown-item" onclick="exportSellers('json')">
+                    <i class="fas fa-file-code"></i> Export as JSON
+                  </a>
+                  <a class="dropdown-item" onclick="exportSellers('excel')">
+                    <i class="fas fa-file-excel"></i> Export as Excel
+                  </a>
+                  <a class="dropdown-item" onclick="exportSellers('pdf')">
+                    <i class="fas fa-file-pdf"></i> Export as PDF
+                  </a>
                 </div>
               </div>
             </div>
           </div>
-          
-          <div class="table-wrapper">
-            <table class="items-table">
-              <thead>
-                <tr>
-                  <th style="cursor: pointer;" onclick="sortSellers('ntn')">
-                    NTN/CNIC  <i class="fas fa-sort" id="sort-ntn"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortSellers('businessName')">
-                    Business Name <i class="fas fa-sort" id="sort-businessName"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortSellers('province')">
-                    Province <i class="fas fa-sort" id="sort-province"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortSellers('registrationStatus')">
-                    Status <i class="fas fa-sort" id="sort-registrationStatus"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortSellers('registrationType')">
-                    Registration Status <i class="fas fa-sort" id="sort-registrationType"></i>
-                  </th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="sellersTableBody">
-                <!-- Sellers will be populated here -->
-              </tbody>
-            </table>
+        </div>
+        
+        <!-- Table Section -->
+        <div class="table-wrapper">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th onclick="sortSellers('ntn')" style="cursor: pointer;">
+                  NTN/CNIC <i class="fas fa-sort" id="sort-ntn"></i>
+                </th>
+                <th onclick="sortSellers('businessName')" style="cursor: pointer;">
+                  Business Name <i class="fas fa-sort" id="sort-businessName"></i>
+                </th>
+                <th onclick="sortSellers('province')" style="cursor: pointer;">
+                  Province <i class="fas fa-sort" id="sort-province"></i>
+                </th>
+                <th onclick="sortSellers('registrationStatus')" style="cursor: pointer;">
+                  Status <i class="fas fa-sort" id="sort-registrationStatus"></i>
+                </th>
+                <th onclick="sortSellers('registrationType')" style="cursor: pointer;">
+                  Registration Type <i class="fas fa-sort" id="sort-registrationType"></i>
+                </th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sellersTableBody">
+              <!-- Data will be populated here -->
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Pagination Section - Positioned at Bottom after Table -->
+        <div class="pagination-container">
+          <div class="pagination-info" id="sellersPaginationInfo">Showing 
+            <select id="sellersPerPage" class="per-page-select">
+              <option value="1">1</option>
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="all">All</option>
+            </select>
+             of 0 items
           </div>
-          
-          <!-- Pagination -->
-          <div class="pagination-container">
-            <div class="pagination-info" id="sellersPaginationInfo">Showing 0 of 0 items</div>
-            <div class="pagination-controls" id="sellersPaginationControls">
-              <!-- Pagination buttons will be added here -->
-            </div>
+          <div class="pagination-controls" id="sellersPaginationControls">
+            <!-- Pagination buttons will be added here -->
           </div>
         </div>
       </div>
     </div>
     
     <!-- Manage Buyers Tab -->
-    <div id="buyers-tab" class="tab-content">
+    <div id="buyers-tab" class="tab-content table-tab">
       <div class="card">
         <div class="card-header">
-          <h2><i class="fas fa-users"></i> Buyers</h2>
+          <h2><i class="fas fa-users"></i> Manage Buyers</h2>
         </div>
         
-        <div class="table-container">
-          <!-- Search and Filter Section -->
-          <div class="filters-section">
-            <div class="form-row" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
-              <!-- Search Input -->
-              <div class="form-group" style="width: 300px;">
-                <div class="search-box" style="position: relative; display: flex; align-items: center;">
-                  <i class="fas fa-search" style="position: absolute; left: 10px; z-index: 1; color: #666;"></i>
-                  <input type="text" id="buyerSearch" placeholder="Search buyers..." style="padding-left: 35px; width: 100%; height: 38px; border: 1px solid #ddd; border-radius: 4px;">
+        <!-- Filters Section -->
+        <div class="filter-container">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="buyerSearch">Search:</label>
+              <input type="text" id="buyerSearch" placeholder="Search buyers...">
+            </div>
+            <div class="form-group">
+              <label for="buyerProvinceFilter">Province:</label>
+              <select id="buyerProvinceFilter">
+                <option value="all">All Provinces</option>
+                <option value="Punjab">Punjab</option>
+                <option value="Sindh">Sindh</option>
+                <option value="KPK">KPK</option>
+                <option value="Balochistan">Balochistan</option>
+                <option value="Islamabad">Islamabad</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="buyerRegTypeFilter">Registration:</label>
+              <select id="buyerRegTypeFilter">
+                <option value="all">All Types</option>
+                <option value="Registered">Registered</option>
+                <option value="unregistered">Unregistered</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="buyerStatusFilter">Status:</label>
+              <select id="buyerStatusFilter">
+                <option value="all">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <button class="btn btn-success" id="addBuyerModalBtn">
+                <i class="fas fa-plus"></i> Add Buyer
+              </button>
+            </div>
+            <div class="export-actions">
+              <div class="export-dropdown">
+                <button class="dropdown-toggle" type="button">
+                  <i class="fas fa-download"></i> Export
+                </button>
+                <div class="dropdown-menu">
+                  <a class="dropdown-item" onclick="exportBuyers('json')">
+                    <i class="fas fa-file-code"></i> Export as JSON
+                  </a>
+                  <a class="dropdown-item" onclick="exportBuyers('excel')">
+                    <i class="fas fa-file-excel"></i> Export as Excel
+                  </a>
+                  <a class="dropdown-item" onclick="exportBuyers('pdf')">
+                    <i class="fas fa-file-pdf"></i> Export as PDF
+                  </a>
                 </div>
               </div>
-
-              <!-- Province Filter -->
-              <div class="form-group" style="flex: 1; min-width: 140px;">
-                <select id="buyerProvinceFilter" class="form-control">
-                  <option value="all">All Provinces</option>
-                </select>
-              </div>
-
-              <!-- Registration Type Filter -->
-              <div class="form-group" style="flex: 1; min-width: 180px;">
-                <select id="buyerRegTypeFilter" class="form-control">
-                  <option value="all">All Registration Types</option>
-                  <option value="Registered">Registered</option>
-                  <option value="unregistered">Unregistered</option>
-                </select>
-              </div>
-
-              <!-- Status Filter -->
-              <div class="form-group" style="flex: 1; min-width: 120px;">
-                <select id="buyerStatusFilter" class="form-control">
-                  <option value="all">All Status</option>
-                  <option value="Active">Active</option>
-                  <option value="In-Active">In-Active</option>
-                </select>
-              </div>
-
-              <!-- Items per page -->
-              <div class="form-group" style="flex: 0 0 auto; min-width: 100px;">
-                <select id="buyersPerPage" class="form-control">
-                  <option value="all">All</option>
-                  <option value="1">1</option>
-                  <option value="10">10</option>
-                  <option value="20" selected>20</option>
-                  <option value="50">50</option>
-                  <option value="100">100</option>
-                </select>
-              </div>
-
-              <!-- Add Button -->
-              <div class="form-group" style="flex: 0 0 auto;">
-                <button class="btn btn-success" id="addBuyerModalBtn">
-                  <i class="fas fa-plus"></i> Add Buyer
-                </button>
-<div id="buyersExportComponent"></div>
-              </div>
             </div>
           </div>
-          
-          <div class="table-wrapper">
-            <table class="items-table">
-              <thead>
-                <tr>
-                  <th style="cursor: pointer;" onclick="sortBuyers('ntn')">
-                    NTN/CNIC <i class="fas fa-sort" id="sort-buyer-ntn"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortBuyers('businessName')">
-                    Business Name <i class="fas fa-sort" id="sort-buyer-businessName"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortBuyers('province')">
-                    Province <i class="fas fa-sort" id="sort-buyer-province"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortBuyers('registrationType')">
-                    Registration Type <i class="fas fa-sort" id="sort-buyer-registrationType"></i>
-                  </th>
-                  <th style="cursor: pointer;" onclick="sortBuyers('registrationStatus')">
-                    Status <i class="fas fa-sort" id="sort-buyer-registrationStatus"></i>
-                  </th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="buyersTableBody">
-                <!-- Buyers will be populated here -->
-              </tbody>
-            </table>
+        </div>
+        
+        <!-- Table Section -->
+        <div class="table-wrapper">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th onclick="sortBuyers('ntn')" style="cursor: pointer;">
+                  NTN/CNIC <i class="fas fa-sort" id="sort-buyer-ntn"></i>
+                </th>
+                <th onclick="sortBuyers('businessName')" style="cursor: pointer;">
+                  Business Name <i class="fas fa-sort" id="sort-buyer-businessName"></i>
+                </th>
+                <th onclick="sortBuyers('province')" style="cursor: pointer;">
+                  Province <i class="fas fa-sort" id="sort-buyer-province"></i>
+                </th>
+                <th onclick="sortBuyers('registrationType')" style="cursor: pointer;">
+                  Registration Type <i class="fas fa-sort" id="sort-buyer-registrationType"></i>
+                </th>
+                <th onclick="sortBuyers('registrationStatus')" style="cursor: pointer;">
+                  Status <i class="fas fa-sort" id="sort-buyer-registrationStatus"></i>
+                </th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="buyersTableBody">
+              <!-- Data will be populated here -->
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Pagination Section - Positioned at Bottom after Table -->
+        <div class="pagination-container">
+          <div class="pagination-info" id="buyersPaginationInfo">Showing 
+            <select id="buyersPerPage" class="per-page-select">
+              <option value="1">1</option>
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="all">All</option>
+            </select>
+             of 0 items
           </div>
-          
-          <!-- Pagination -->
-          <div class="pagination-container">
-            <div class="pagination-info" id="buyersPaginationInfo">Showing 0 of 0 items</div>
-            <div class="pagination-controls" id="buyersPaginationControls">
-              <!-- Pagination buttons will be added here -->
-            </div>
+          <div class="pagination-controls" id="buyersPaginationControls">
+            <!-- Pagination buttons will be added here -->
           </div>
         </div>
       </div>
@@ -1159,13 +1186,14 @@
         </div>
         
         <div class="tab-container">
-          <ul class="tab-nav">
-            <button class="tab-active" data-tab="table-tab">View as Table</button>
-            <button data-tab="json-tab">View as JSON</button>
-          </ul>
+          <div class="tab-nav">
+            <button id="toggleViewBtn" class="btn btn-primary toggle-view-btn" data-current="table">
+              <i class="fas fa-code"></i> View as JSON
+            </button>
+          </div>
           
           <div class="tab-content active" id="table-tab">
-            <div id="successResponseData" class="response-container active"></div>
+            <div id="successResponseData" class="response-container"></div>
           </div>
           
           <div class="tab-content" id="json-tab">
@@ -1181,6 +1209,45 @@
           <i class="fas fa-copy"></i> Copy JSON
         </button>
         <button class="btn btn-danger" id="closeSuccessModalBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Modal -->
+  <div class="modal error-modal" id="errorModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>
+          <i class="fas fa-exclamation-circle"></i>
+          Submission Failed
+        </h2>
+        <button class="modal-close" id="closeErrorModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="error-message-container">
+          <div class="error-message-header">
+            <div class="error-icon">
+              <i class="fas fa-times-circle"></i>
+            </div>
+            <div class="error-content">
+              <h3>Validation Error</h3>
+              <p id="errorModalMessage">An error occurred during submission.</p>
+            </div>
+          </div>
+          <div class="error-details" id="errorDetails" style="display: none;">
+            <h4>Error Details:</h4>
+            <pre id="errorDetailsContent"></pre>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="showErrorDetailsBtn">
+          <i class="fas fa-info-circle"></i> Show Details
+        </button>
+        <button class="btn btn-primary" id="retrySubmissionBtn">
+          <i class="fas fa-redo"></i> Retry Submission
+        </button>
+        <button class="btn btn-danger" id="closeErrorModalBtn">Close</button>
       </div>
     </div>
   </div>
@@ -1330,6 +1397,29 @@
       </div>
     </div>
   </div>
+
+  <!-- Custom Confirm Modal -->
+  <div class="confirm-modal" id="confirmModal">
+    <div class="confirm-modal-content">
+      <div class="confirm-modal-header">
+        <div class="icon warning" id="confirmIcon">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="content">
+          <h4 id="confirmTitle">Confirm Action</h4>
+          <p id="confirmSubtitle">Are you sure you want to proceed?</p>
+        </div>
+      </div>
+      <div class="confirm-modal-body">
+        <p id="confirmMessage">This action cannot be undone.</p>
+      </div>
+      <div class="confirm-modal-footer">
+        <button class="btn btn-cancel" id="confirmCancel">Cancel</button>
+        <button class="btn btn-confirm" id="confirmOk">Confirm</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="app.js"></script> 
 </body>
 </html>
