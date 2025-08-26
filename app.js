@@ -201,6 +201,123 @@ window.exportProducts = exportProducts;
 window.exportSellers = exportSellers;
 window.exportBuyers = exportBuyers;
 
+// Make console logging functions globally available
+window.toggleConsoleLogging = toggleConsoleLogging;
+window.isConsoleLoggingEnabled = () => isConsoleLoggingEnabled;
+window.loadConsoleLoggingSetting = loadConsoleLoggingSetting;
+window.saveConsoleLoggingSetting = saveConsoleLoggingSetting;
+window.updateLoaderStatus = updateLoaderStatus;
+window.updateLoaderProgress = updateLoaderProgress;
+window.hideLoader = hideLoader;
+window.showLoader = showLoader;
+window.setBackupLoaderTimer = setBackupLoaderTimer;
+window.forceRemoveLoader = forceRemoveLoader;
+window.debugLoaderStatus = debugLoaderStatus;
+window.forceThemeRefresh = forceThemeRefresh;
+
+// === App Loader Functions ===
+let loaderTimeout;
+let backupLoaderTimeout;
+
+// Set a backup timer to hide loader after maximum 3 seconds
+function setBackupLoaderTimer() {
+  backupLoaderTimeout = setTimeout(() => {
+    console.warn('Backup timer: Force hiding loader after 3 seconds');
+    forceRemoveLoader();
+  }, 3000);
+}
+
+function updateLoaderStatus(status) {
+  const statusElement = document.getElementById('loaderStatus');
+  if (statusElement) {
+    statusElement.textContent = status;
+  }
+}
+
+function updateLoaderProgress(percentage) {
+  const progressBar = document.querySelector('.loader-progress-bar');
+  if (progressBar) {
+    progressBar.style.width = percentage + '%';
+  }
+}
+
+function hideLoader() {
+  const loader = document.getElementById('appLoader');
+  if (loader) {
+    console.log('Hiding loader...');
+    // Add hidden class for fade out animation
+    loader.classList.add('hidden');
+    
+    // Also immediately set display none to ensure it's hidden
+    loader.style.display = 'none';
+    
+    // Remove loader from DOM after animation completes
+    setTimeout(() => {
+      if (loader && loader.parentNode) {
+        loader.parentNode.removeChild(loader);
+        console.log('App loader removed successfully');
+      }
+    }, 100); // Reduced timeout for faster removal
+  }
+  
+  // Clear any pending timeouts
+  if (loaderTimeout) {
+    clearTimeout(loaderTimeout);
+    loaderTimeout = null;
+  }
+  if (backupLoaderTimeout) {
+    clearTimeout(backupLoaderTimeout);
+    backupLoaderTimeout = null;
+  }
+}
+
+// Force remove loader immediately (emergency function)
+function forceRemoveLoader() {
+  const loader = document.getElementById('appLoader');
+  if (loader) {
+    console.log('Force removing loader...');
+    loader.style.display = 'none';
+    loader.style.visibility = 'hidden';
+    loader.style.opacity = '0';
+    if (loader.parentNode) {
+      loader.parentNode.removeChild(loader);
+      console.log('Loader force removed from DOM');
+    }
+  }
+  
+  // Clear all timers
+  if (loaderTimeout) {
+    clearTimeout(loaderTimeout);
+    loaderTimeout = null;
+  }
+  if (backupLoaderTimeout) {
+    clearTimeout(backupLoaderTimeout);
+    backupLoaderTimeout = null;
+  }
+}
+
+// Debug function to check loader status
+function debugLoaderStatus() {
+  const loader = document.getElementById('appLoader');
+  console.log('=== Loader Debug Info ===');
+  console.log('Loader element exists:', !!loader);
+  if (loader) {
+    console.log('Loader display style:', loader.style.display);
+    console.log('Loader visibility:', loader.style.visibility);
+    console.log('Loader opacity:', loader.style.opacity);
+    console.log('Loader classes:', loader.className);
+    console.log('Loader z-index:', getComputedStyle(loader).zIndex);
+  }
+  console.log('=== End Debug Info ===');
+}
+
+function showLoader() {
+  const loader = document.getElementById('appLoader');
+  if (loader) {
+    loader.classList.remove('hidden');
+  }
+}
+
 
 // === IndexedDB Utility ===
 const DB_NAME = 'fbr_invoice_app';
@@ -327,8 +444,8 @@ async function dbSetAll(store, items) {
 // === Migrate localStorage data to IndexedDB on first load ===
 async function migrateLocalStorageToIndexedDB() {
   const stores = [
-    { key: 'fbrSellers', store: STORE_NAMES.sellers, default: typeof defaultSellers !== 'undefined' ? defaultSellers : [] },
-    { key: 'fbrBuyers', store: STORE_NAMES.buyers, default: typeof defaultBuyers !== 'undefined' ? defaultBuyers : [] },
+    { key: 'fbrSellers', store: STORE_NAMES.sellers, default: [] }, // Commented out defaultSellers
+    { key: 'fbrBuyers', store: STORE_NAMES.buyers, default: [] }, // Commented out defaultBuyers
     { key: 'fbrInvoices', store: STORE_NAMES.invoices, default: [] },
     { key: 'fbrPreferences', store: STORE_NAMES.preferences, default: [] },
     { key: 'fbrProducts', store: STORE_NAMES.products, default: [] },
@@ -509,7 +626,7 @@ viewJsonBtn.addEventListener('click', () => {
     
     invoicePreview.innerHTML = `<div style="padding: 20px;">
       <h3>Invoice Data (JSON View)</h3>
-      <pre style="white-space: pre-wrap; word-wrap: break-word; background: #f8f9fa; padding: 15px; border-radius: 4px; max-height: 70vh; overflow-y: auto;">
+      <pre style="white-space: pre-wrap; word-wrap: break-word; padding: 15px; border-radius: 4px; max-height: 70vh; overflow-y: auto;">
 ${JSON.stringify(invoiceData, null, 2)}
       </pre>
     </div>`;
@@ -1150,61 +1267,6 @@ const API_URLS = {
 
 
 // Default data
-const defaultSellers = [
-  {
-    id: "hussaini",
-    businessName: "HUSSAINI LOGISTICS ENTERPRISES (PRIVATE) LIMITED",
-    ntn: "7908224",
-    address: "Rawalpindi",
-    province: "SINDH",
-    businessActivity: "Service Provider",
-    sector: "Services",
-    scenarioIds: ["SN018","SN019"],
-    sandboxToken: "Bearer df9b1769-25e7-3557-9343-37bc5e882b29",
-    productionToken: "Bearer df9b1769-25e7-3557-9343-37bc5e882b29",
-    registrationStatus: "Active",
-    registrationType: "Registered",
-    lastSaleInvoiceId: 1,
-    lastDebitNoteId: 1,
-  },
-  {
-    id: "mtc",
-    businessName: "SYED IMRAN HUSSAIN SHAH",
-    ntn: "4420653123917",
-    address: "Hyderabad",
-    province: "SINDH",
-    businessActivity: "Service Provider",
-    sector: "Services",
-    scenarioIds: ["SN018","SN019"],
-    sandboxToken: "Bearer 4c001ca4-4d0e-3f95-9b04-aec2cad0e5f5",
-    productionToken: "Bearer 4c001ca4-4d0e-3f95-9b04-aec2cad0e5f5",
-    registrationStatus: "Active",
-    registrationType: "Registered",
-    lastSaleInvoiceId: 1,
-    lastDebitNoteId: 1,
-  },
-]
-
-const defaultBuyers = [
-  {
-    id: "continental",
-    businessName: "CONTINENTAL BISCUITS LIMITED",
-    ntn: "0710106",
-    address: "Karachi",
-    province: "SINDH",
-    registrationType: "Registered",
-    registrationStatus: "Active",
-  },
-  {
-    id: "pso",
-    businessName: "PAKISTAN STATE OIL COMPANY LIMITED",
-    ntn: "0711554",
-    address: "Karachi",
-    province: "SINDH",
-    registrationType: "Registered",
-    registrationStatus: "Active",
-  },
-]
 
 // Toast notification system
 function showToast(type, title, message, duration = 5000) {
@@ -1596,6 +1658,23 @@ async function handleSuccessfulSubmission(response, seller, invoicePayload) {
     // Display success modal with the response
     displaySuccessModal(enrichedResponse);
     
+    // Set default tab to table view after modal is displayed
+    switchSuccessTab('table-tab');
+    // setTimeout(() => {
+    //   try {
+    //     console.log('🏠 Setting default tab to table-tab from success handler');
+    //     switchSuccessTab('table-tab');
+    //   } catch (error) {
+    //     console.warn('⚠️ Failed to set default tab from success handler:', error);
+    //     // Fallback: manually set the table tab visible
+    //     const tableTab = document.getElementById('table-tab');
+    //     if (tableTab) {
+    //       tableTab.style.display = 'block';
+    //       tableTab.classList.add('active');
+    //     }
+    //   }
+    // }, 2);
+    
     // Update the invoices table
     await populateInvoicesTable();
     
@@ -1623,134 +1702,129 @@ function enrichResponseWithInvoiceData(response, invoicePayload) {
 
 
 
-// Clean up success modal state
-function cleanupSuccessModal() {
-  const tableTab = document.getElementById('table-tab');
-  const jsonTab = document.getElementById('json-tab');
-  const toggleBtn = document.getElementById('toggleViewBtn');
-  
-  if (tableTab && jsonTab && toggleBtn) {
-    // Remove all classes and styles
-    tableTab.classList.remove('active');
-    jsonTab.classList.remove('active');
-    
-    // Clear inline styles
-    tableTab.removeAttribute('style');
-    jsonTab.removeAttribute('style');
-    
-    // Reset button state
-    toggleBtn.setAttribute('data-current', '');
-    
-    console.log('Success modal state cleaned up');
-  }
-}
-
-// Debug function for success modal tabs
-function debugSuccessModalTabs() {
-  const tableTab = document.getElementById('table-tab');
-  const jsonTab = document.getElementById('json-tab');
-  const toggleBtn = document.getElementById('toggleViewBtn');
-  const modal = document.getElementById('successModal');
-  
-  console.log('=== Success Modal Tab Debug ===');
-  console.log('Modal active:', modal?.classList.contains('active'));
-  console.log('Table tab element:', !!tableTab);
-  console.log('JSON tab element:', !!jsonTab);
-  console.log('Toggle button element:', !!toggleBtn);
-  
-  if (tableTab) {
-    console.log('Table tab classes:', tableTab.classList.toString());
-    console.log('Table tab style.display:', tableTab.style.display);
-    console.log('Table tab computed display:', getComputedStyle(tableTab).display);
-    console.log('Table tab visibility:', getComputedStyle(tableTab).visibility);
-  }
-  
-  if (jsonTab) {
-    console.log('JSON tab classes:', jsonTab.classList.toString());
-    console.log('JSON tab style.display:', jsonTab.style.display);
-    console.log('JSON tab computed display:', getComputedStyle(jsonTab).display);
-    console.log('JSON tab visibility:', getComputedStyle(jsonTab).visibility);
-  }
-  
-  if (toggleBtn) {
-    console.log('Toggle button data-current:', toggleBtn.getAttribute('data-current'));
-    console.log('Toggle button text:', toggleBtn.textContent.trim());
-  }
-  
-  console.log('=== End Debug ===');
-}
-
-// Add debug function to window for manual testing
-window.debugSuccessModalTabs = debugSuccessModalTabs;
-window.testToggle = function() {
-  console.log('🧪 MANUAL TOGGLE TEST');
-  const btn = document.getElementById('toggleViewBtn');
-  if (btn) {
-    console.log('Button found:', btn);
-    console.log('Button data-current:', btn.getAttribute('data-current'));
-    console.log('Button innerHTML:', btn.innerHTML);
-    toggleSuccessView();
-  } else {
-    console.error('❌ Toggle button not found!');
-  }
-};
-
-function toggleSuccessView() {
-  console.log('🔄 TOGGLE BUTTON CLICKED!');
+// Simple and reliable tab switching for success modal
+function switchSuccessTab(targetTabId) {
+  console.log('🔄 Switching to tab:', targetTabId);
   
   const tableTab = document.getElementById('table-tab');
   const jsonTab = document.getElementById('json-tab');
-  const toggleBtn = document.getElementById('toggleViewBtn');
+  const tabButtons = document.querySelectorAll('#successModal .tab-btn');
   
-  if (!tableTab || !jsonTab || !toggleBtn) {
-    console.error('❌ Missing elements for toggle:', { tableTab: !!tableTab, jsonTab: !!jsonTab, toggleBtn: !!toggleBtn });
+  if (!tableTab || !jsonTab) {
+    console.error('❌ Tab elements not found:', { tableTab: !!tableTab, jsonTab: !!jsonTab });
     return;
   }
   
-  const currentView = toggleBtn.getAttribute('data-current');
-  console.log('Current view before toggle:', currentView);
-  
-  // Always clear both tabs first to prevent conflicts
+  // Remove active class from all tabs and explicitly hide them
   tableTab.classList.remove('active');
-  jsonTab.classList.remove('active');
   tableTab.style.display = 'none';
+  jsonTab.classList.remove('active');
   jsonTab.style.display = 'none';
-  tableTab.style.visibility = 'hidden';
-  jsonTab.style.visibility = 'hidden';
   
-  if (currentView === 'table') {
-    // Switch to JSON view
-    jsonTab.classList.add('active');
-    jsonTab.style.display = 'block';
-    jsonTab.style.visibility = 'visible';
+  // Remove active class from all buttons
+  tabButtons.forEach(btn => btn.classList.remove('tab-active'));
+  
+  // Add active class to target tab and button
+  const targetTab = document.getElementById(targetTabId);
+  const targetButton = document.querySelector(`#successModal [data-tab="${targetTabId}"]`);
+  
+  if (targetTab && targetButton) {
+    targetTab.classList.add('active');
+    targetTab.style.display = 'block';
+    targetButton.classList.add('tab-active');
     
-    // Update button
-    toggleBtn.setAttribute('data-current', 'json');
-    toggleBtn.innerHTML = '<i class="fas fa-table"></i> View as Table';
-    
-    console.log('Switched to JSON view');
+    console.log('✅ Tab switched successfully to:', targetTabId);
+    console.log('📊 Tab visibility:', {
+      tableVisible: tableTab.style.display !== 'none' && tableTab.classList.contains('active'),
+      jsonVisible: jsonTab.style.display !== 'none' && jsonTab.classList.contains('active')
+    });
   } else {
-    // Switch to Table view
-    tableTab.classList.add('active');
+    console.error('❌ Target tab or button not found:', { targetTab: !!targetTab, targetButton: !!targetButton });
+  }
+}
+
+// Debug function accessible from browser console
+window.testTabs = function() {
+  console.log('🧪 TESTING TABS');
+  console.log('Switching to JSON...');
+  switchSuccessTab('json-tab');
+  setTimeout(() => {
+    console.log('Switching back to Table...');
+    switchSuccessTab('table-tab');
+  }, 2000);
+};
+
+// Export tab functions globally
+window.switchSuccessTab = switchSuccessTab;
+
+// Debug function to check current tab state
+window.debugTabState = function() {
+  const tableTab = document.getElementById('table-tab');
+  const jsonTab = document.getElementById('json-tab');
+  const tabButtons = document.querySelectorAll('#successModal .tab-btn');
+  
+  console.log('🔍 TAB DEBUG STATE:');
+  console.log('Table tab:', {
+    exists: !!tableTab,
+    hasActiveClass: tableTab?.classList.contains('active'),
+    displayStyle: tableTab?.style.display,
+    computedDisplay: tableTab ? getComputedStyle(tableTab).display : 'N/A',
+    visible: tableTab?.offsetHeight > 0
+  });
+  console.log('JSON tab:', {
+    exists: !!jsonTab,
+    hasActiveClass: jsonTab?.classList.contains('active'),
+    displayStyle: jsonTab?.style.display,
+    computedDisplay: jsonTab ? getComputedStyle(jsonTab).display : 'N/A',
+    visible: jsonTab?.offsetHeight > 0
+  });
+  console.log('Tab buttons:', Array.from(tabButtons).map(btn => ({
+    text: btn.textContent,
+    hasActiveClass: btn.classList.contains('tab-active'),
+    dataTab: btn.getAttribute('data-tab')
+  })));
+};
+
+// Debug function to force show table content
+window.forceShowTable = function() {
+  const tableTab = document.getElementById('table-tab');
+  const jsonTab = document.getElementById('json-tab');
+  
+  if (tableTab) {
     tableTab.style.display = 'block';
     tableTab.style.visibility = 'visible';
-    
-    // Update button
-    toggleBtn.setAttribute('data-current', 'table');
-    toggleBtn.innerHTML = '<i class="fas fa-code"></i> View as JSON';
-    
-    console.log('Switched to Table view');
+    tableTab.classList.add('active');
+  }
+  if (jsonTab) {
+    jsonTab.style.display = 'none';
+    jsonTab.classList.remove('active');
   }
   
-  // Debug final state
-  console.log('Final visibility:', {
-    tableDisplay: getComputedStyle(tableTab).display,
-    jsonDisplay: getComputedStyle(jsonTab).display,
-    tableActive: tableTab.classList.contains('active'),
-    jsonActive: jsonTab.classList.contains('active'),
-    currentView: toggleBtn.getAttribute('data-current')
+  console.log('🔧 Force showed table tab');
+};
+
+// Manual test function for event listeners
+window.testTabButtons = function() {
+  console.log('🔍 TESTING TAB BUTTON EVENT LISTENERS');
+  const tabButtons = document.querySelectorAll('#successModal .tab-btn');
+  
+  tabButtons.forEach((button, index) => {
+    console.log(`Button ${index + 1}:`, {
+      text: button.textContent,
+      'data-tab': button.getAttribute('data-tab'),
+      hasEventListener: !!button.onclick,
+      isClickable: getComputedStyle(button).pointerEvents,
+      cursor: getComputedStyle(button).cursor
+    });
   });
-}
+  
+  if (tabButtons.length > 0) {
+    console.log('Programmatically clicking first button...');
+    tabButtons[0].click();
+  }
+  
+  return tabButtons.length;
+};
 
 async function displaySuccessModal(response) {
   if (!DOMElements.successModal) return;
@@ -1762,6 +1836,8 @@ async function displaySuccessModal(response) {
   const formattedResponse = JSON.stringify(response, null, 2);
   DOMElements.successResponseJson.textContent = formattedResponse;
 
+    console.log('✅ Success modal initialized with direct onClick handlers');
+    
   // Construct HTML for Table view
   let html = `<div style="margin-top: 20px;">
       <h3 style="color: #28a745; margin-bottom: 10px; font-size: 1rem;">✅ Submission Results</h3>
@@ -1822,70 +1898,12 @@ async function displaySuccessModal(response) {
   // Show modal first
   DOMElements.successModal.classList.add("active");
 
-  // Clean up any existing state first
-  cleanupSuccessModal();
-
-  // Set default view to table and ensure proper visibility
-  const tableTab = document.getElementById('table-tab');
-  const jsonTab = document.getElementById('json-tab');
-  const toggleBtn = document.getElementById('toggleViewBtn');
+  console.log('✅ Success modal initialized with direct onClick handlers');
   
-  // First, clear all existing states to ensure clean initialization
-  if (tableTab && jsonTab && toggleBtn) {
-    // Clear all active states first
-    tableTab.classList.remove('active');
-    jsonTab.classList.remove('active');
-    
-    // Reset all display styles
-    tableTab.style.display = '';
-    jsonTab.style.display = '';
-    tableTab.style.visibility = '';
-    jsonTab.style.visibility = '';
-    
-    // Now set table as active (default view)
-    tableTab.classList.add('active');
-    tableTab.style.display = 'block';
-    tableTab.style.visibility = 'visible';
-    
-    // Ensure JSON tab is hidden
-    jsonTab.classList.remove('active');
-    jsonTab.style.display = 'none';
-    jsonTab.style.visibility = 'hidden';
-    
-    // Set button to initial state (showing table, button says "View as JSON")
-    toggleBtn.setAttribute('data-current', 'table');
-    toggleBtn.innerHTML = '<i class="fas fa-code"></i> View as JSON';
-    
-    console.log('SUCCESS MODAL: Tab visibility initialized - Table:', tableTab.classList.contains('active'), 'JSON:', jsonTab.classList.contains('active'));
-  }
-
-  // Attach toggle button event listener with multiple methods
-  if (toggleBtn) {
-    // Remove existing listeners by removing and re-adding the event
-    toggleBtn.removeEventListener("click", toggleSuccessView);
-    toggleBtn.addEventListener("click", toggleSuccessView);
-    
-    // Also add onclick as fallback
-    toggleBtn.onclick = toggleSuccessView;
-    
-    // Ensure button is clickable
-    toggleBtn.style.pointerEvents = 'auto';
-    toggleBtn.style.cursor = 'pointer';
-    
-    // Also store the reference for debugging
-    window.currentToggleBtn = toggleBtn;
-    console.log('✅ Toggle button event listener attached:', toggleBtn.id);
-    console.log('Button element:', toggleBtn);
-    console.log('Button parent:', toggleBtn.parentElement);
-  }
-  
-  // Debug the final state
-  setTimeout(() => {
-    debugSuccessModalTabs();
-  }, 100);
 
   // Create "Preview" button and inject into modal footer
   const modalFooter = document.querySelector('#successModal .modal-footer');
+
   if (modalFooter) {
     const existingPreviewBtn = modalFooter.querySelector('.preview-invoice-btn');
     if (existingPreviewBtn) existingPreviewBtn.remove();
@@ -1896,7 +1914,10 @@ async function displaySuccessModal(response) {
     previewButton.style.marginRight = '10px';
     previewButton.onclick = () => generateInvoicePDF(response, false, true);
     modalFooter.insertBefore(previewButton, modalFooter.firstChild);
+
   }
+
+  console.log('✅ Success modal initialized with direct onClick handlers');
 }
 
 
@@ -4681,6 +4702,13 @@ function initModals() {
       sellerForm.reset();
       sellerModal.classList.remove("active");
       showToast("success", "Seller Saved", "Seller information saved successfully");
+      
+      // Check if this was the first seller added (when globalSellers was empty)
+      const sellers = await dbGetAll(STORE_NAMES.sellers);
+      if (sellers.length === 1) {
+        // Reload the app to populate all tables and dashboard with the new seller
+        await populateTablesAndDashboard();
+      }
     });
   }
 
@@ -5924,6 +5952,22 @@ const submitURL = isProduction ? API_URLS.submit.production : API_URLS.submit.sa
         // ✅ Show Modal
         // DOMElements.successModal.style.display = "block"
         DOMElements.successModal.classList.add("active")
+        
+        // Set default tab to table view after modal is displayed
+        setTimeout(() => {
+          try {
+            console.log('🏠 Setting default tab to table-tab from second success handler');
+            switchSuccessTab('table-tab');
+          } catch (error) {
+            console.warn('⚠️ Failed to set default tab from second success handler:', error);
+            // Fallback: manually set the table tab visible
+            const tableTab = document.getElementById('table-tab');
+            if (tableTab) {
+              tableTab.style.display = 'block';
+              tableTab.classList.add('active');
+            }
+          }
+        }, 350);
 
         // Store response for PDF generation
         lastSubmissionResponse = postResult
@@ -7022,6 +7066,7 @@ async function initAppComponents() {
   initAPITesting();
   initPreviewModal();
   initDatabaseImportExport();
+  initConsoleLoggingToggle();
 
   // Toggle between production and sandbox environment
   DOMElements.modeToggle.addEventListener("change", () => {
@@ -7041,6 +7086,13 @@ async function populateTablesAndDashboard() {
   globalSellers = await dbGetAll(STORE_NAMES.sellers);
   globalInvoices = await dbGetAll(STORE_NAMES.invoices);
   globalBuyers = await dbGetAll(STORE_NAMES.buyers);
+
+  // Check if there are no sellers, and if so, show the seller modal
+  if (globalSellers.length === 0) {
+    // Show the seller modal to add a new seller
+    openAddSellerModal();
+    return; // Exit early to prevent further processing until a seller is added
+  }
 
   // Populate all tables
   await populateProductsTable();
@@ -7064,8 +7116,6 @@ async function populateTablesAndDashboard() {
     populateProvinceSelects();
   }
 
-
-  
   // Store initial app state
   initialAppState = {
     selectedSeller: globalSellers.length > 0 ? globalSellers[0].ntn : '',
@@ -7077,21 +7127,76 @@ async function populateTablesAndDashboard() {
 
 // Main initialization function
 async function initApp() {
-  // Migrate old local storage data to IndexedDB
-  await migrateLocalStorageToIndexedDB();
-  
-  // Initialize UI components first
-  await initAppComponents();
-  
-  // Load data and populate tables/dashboard
-  await populateTablesAndDashboard();
+  try {
+    // Set backup timer to ensure loader is always hidden
+    setBackupLoaderTimer();
+    
+    // Show initial loader status
+    updateLoaderStatus('Initializing system...');
+    updateLoaderProgress(10);
+    
+    // Setup conditional console logging first
+    setupConditionalLogging();
+    
+    updateLoaderStatus('Setting up logging system...');
+    updateLoaderProgress(20);
+    
+    // Migrate old local storage data to IndexedDB
+    await migrateLocalStorageToIndexedDB();
+    
+    updateLoaderStatus('Migrating data...');
+    updateLoaderProgress(30);
+    
+    // Load console logging preference from IndexedDB
+    await loadConsoleLoggingSetting();
+    
+    updateLoaderStatus('Loading preferences...');
+    updateLoaderProgress(40);
+    
+    // Initialize UI components first
+    await initAppComponents();
+    
+    updateLoaderStatus('Initializing components...');
+    updateLoaderProgress(60);
+    
+    // Load data and populate tables/dashboard
+    await populateTablesAndDashboard();
+
+    updateLoaderStatus('Loading data and dashboard...');
+    updateLoaderProgress(80);
 
     // Add dummy item to the invoice
-  await addNewItem();
+    await addNewItem();
 
-  // Show success message when initialization is complete
-  showToast("success", "System Ready", "FBR Digital Invoicing System initialized successfully");
-  console.log("FBR Digital Invoicing System initialized successfully");
+    updateLoaderStatus('Finalizing setup...');
+    updateLoaderProgress(90);
+    
+    // Log sample invoices after app is fully loaded
+    await logSampleInvoices();
+    
+    updateLoaderStatus('Application ready!');
+    updateLoaderProgress(100);
+    
+    // Hide loader after a brief delay to show completion
+    setTimeout(() => {
+      hideLoader();
+    }, 300); // Reduced from 800ms to 300ms
+
+    // Show success message when initialization is complete
+    showToast("success", "System Ready", "FBR Digital Invoicing System initialized successfully");
+    console.log("FBR Digital Invoicing System initialized successfully");
+    
+  } catch (error) {
+    console.error('Error during app initialization:', error);
+    updateLoaderStatus('Error occurred - hiding loader...');
+    
+    // Always force remove loader immediately on error
+    setTimeout(() => {
+      forceRemoveLoader();
+    }, 500); // Reduced timeout for error case
+    
+    showToast("error", "Initialization Error", "App loaded with some issues. Check console for details.");
+  }
 }
 
 // Update UI elements based on the current theme
@@ -7104,7 +7209,7 @@ function updateThemeDependentElements(theme) {
     logoIcon.style.color = isDark ? '#1a3a8f' : '#0052A5';
   }
   
-  // Update any other theme-dependent elements as needed
+  // Update CSS variables for dynamic theming
   document.documentElement.style.setProperty('--fbr-blue', isDark ? '#1a3a8f' : '#0052A5');
   document.documentElement.style.setProperty('--fbr-red', isDark ? '#c62828' : '#E31837');
   document.documentElement.style.setProperty('--fbr-light-blue', isDark ? '#1a237e' : '#e6f0ff');
@@ -7113,6 +7218,36 @@ function updateThemeDependentElements(theme) {
   document.documentElement.style.setProperty('--fbr-orange', isDark ? '#ef6c00' : '#ff9800');
   document.documentElement.style.setProperty('--fbr-gray', isDark ? '#1e1e1e' : '#f8f9fa');
   document.documentElement.style.setProperty('--fbr-dark', isDark ? '#e0e0e0' : '#343a40');
+  
+  // Force refresh of any dynamically created elements
+  const modals = document.querySelectorAll('.modal, .modal-content');
+  modals.forEach(modal => {
+    // Trigger a reflow to ensure styles are applied
+    modal.style.display = modal.style.display;
+  });
+  
+  // Update any toast notifications that might be visible
+  const toasts = document.querySelectorAll('.toast');
+  toasts.forEach(toast => {
+    toast.style.display = toast.style.display;
+  });
+}
+
+// Force refresh theme on all elements
+function forceThemeRefresh() {
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+  
+  // Temporarily remove and re-add the theme attribute to force re-rendering
+  document.documentElement.removeAttribute('data-theme');
+  
+  // Use requestAnimationFrame to ensure DOM update
+  requestAnimationFrame(() => {
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    updateThemeDependentElements(currentTheme);
+    
+    // Show a toast to confirm theme change
+    showToast('info', 'Theme Updated', `${currentTheme === 'dark' ? 'Dark' : 'Light'} theme applied successfully`);
+  });
 }
 
 
@@ -7136,10 +7271,25 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Update UI elements that might need theme-specific changes
       updateThemeDependentElements(theme);
+      
+      // Force refresh to ensure all elements are properly themed
+      setTimeout(() => {
+        forceThemeRefresh();
+      }, 100);
     });
   }
 
+  // Initialize app
   initApp();
+  
+  // Add emergency loader removal after 5 seconds as ultimate fallback
+  setTimeout(() => {
+    const loader = document.getElementById('appLoader');
+    if (loader) {
+      console.warn('Emergency: Force removing loader after 5 seconds');
+      forceRemoveLoader();
+    }
+  }, 5000);
   
   // Product modal is now initialized in initProductModal()
 });
@@ -7334,6 +7484,147 @@ async function importDatabase(file) {
   } catch (err) {
     console.error("Import error:", err);
     showToast("error", "Import Failed", err.message);
+  }
+}
+
+// Console logging management
+let isConsoleLoggingEnabled = false;
+const originalConsoleLog = console.log;
+const originalConsoleWarn = console.warn;
+const originalConsoleError = console.error;
+const originalConsoleInfo = console.info;
+
+// Enhanced console wrapper that respects the toggle setting
+function conditionalLog(originalFunction, ...args) {
+  if (isConsoleLoggingEnabled) {
+    originalFunction.apply(console, args);
+  }
+}
+
+// Override console methods to use conditional logging
+function setupConditionalLogging() {
+  console.log = (...args) => conditionalLog(originalConsoleLog, ...args);
+  console.warn = (...args) => conditionalLog(originalConsoleWarn, ...args);
+  console.error = (...args) => conditionalLog(originalConsoleError, ...args);
+  console.info = (...args) => conditionalLog(originalConsoleInfo, ...args);
+}
+
+// Load console logging preference from IndexedDB
+async function loadConsoleLoggingSetting() {
+  try {
+    const setting = await dbGet(STORE_NAMES.preferences, 'consoleLogging');
+    isConsoleLoggingEnabled = setting ? setting.value : false;
+    updateConsoleLoggingUI();
+  } catch (error) {
+    // If there's an error loading the setting, default to false
+    isConsoleLoggingEnabled = false;
+    updateConsoleLoggingUI();
+  }
+}
+
+// Save console logging preference to IndexedDB
+async function saveConsoleLoggingSetting(enabled) {
+  try {
+    await dbSet(STORE_NAMES.preferences, {
+      key: 'consoleLogging',
+      value: enabled,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    originalConsoleError('Failed to save console logging setting:', error);
+  }
+}
+
+// Update the UI to reflect current console logging state
+function updateConsoleLoggingUI() {
+  const toggle = document.getElementById('consoleLoggingToggle');
+  const status = document.getElementById('consoleLoggingStatus');
+  
+  if (toggle) {
+    toggle.checked = isConsoleLoggingEnabled;
+  }
+  
+  if (status) {
+    status.textContent = `Console Logging: ${isConsoleLoggingEnabled ? 'Enabled' : 'Disabled'}`;
+    status.style.color = isConsoleLoggingEnabled ? '#28a745' : '#6c757d';
+  }
+}
+
+// Toggle console logging on/off
+async function toggleConsoleLogging() {
+  isConsoleLoggingEnabled = !isConsoleLoggingEnabled;
+  await saveConsoleLoggingSetting(isConsoleLoggingEnabled);
+  updateConsoleLoggingUI();
+  
+  // Show a toast notification
+  showToast(
+    isConsoleLoggingEnabled ? 'success' : 'info',
+    'Console Logging',
+    `Console logging ${isConsoleLoggingEnabled ? 'enabled' : 'disabled'}`
+  );
+  
+  // Log a test message if logging was just enabled
+  if (isConsoleLoggingEnabled) {
+    console.log('Console logging is now enabled. Debug information will be visible in the browser console.');
+  }
+}
+
+// Get and log sample invoices with different statuses
+async function logSampleInvoices() {
+  try {
+    const allInvoices = await dbGetAll(STORE_NAMES.invoices);
+    
+    // Find one draft and one submitted invoice
+    const draftInvoice = allInvoices.find(inv => inv.status === 'draft' || inv.status === 'Draft');
+    const submittedInvoice = allInvoices.find(inv => inv.status === 'submitted' || inv.status === 'Submitted');
+    
+    console.log('=== Sample Invoices Loaded ===');
+    
+    if (draftInvoice) {
+      console.log('📄 Draft Invoice Found:');
+      console.log({
+        id: draftInvoice.id,
+        invoiceRefNo: draftInvoice.invoiceRefNo,
+        date: draftInvoice.invoiceDate || draftInvoice.dated,
+        buyerName: draftInvoice.buyerBusinessName,
+        totalAmount: draftInvoice.totalAmount,
+        status: draftInvoice.status,
+        itemCount: draftInvoice.invoicePayload?.items?.length || draftInvoice.items?.length || 0
+      });
+    } else {
+      console.log('📄 No draft invoice found in database');
+    }
+    
+    if (submittedInvoice) {
+      console.log('✅ Submitted Invoice Found:');
+      console.log({
+        id: submittedInvoice.id,
+        invoiceRefNo: submittedInvoice.invoiceRefNo,
+        invoiceNumber: submittedInvoice.invoiceNumber,
+        date: submittedInvoice.invoiceDate || submittedInvoice.dated,
+        buyerName: submittedInvoice.buyerBusinessName,
+        totalAmount: submittedInvoice.totalAmount,
+        status: submittedInvoice.status,
+        itemCount: submittedInvoice.invoicePayload?.items?.length || submittedInvoice.items?.length || 0
+      });
+    } else {
+      console.log('✅ No submitted invoice found in database');
+    }
+    
+    console.log(`Total invoices in database: ${allInvoices.length}`);
+    console.log('=== End Sample Invoices ===');
+    
+  } catch (error) {
+    console.error('Error loading sample invoices:', error);
+  }
+}
+
+// Initialize console logging toggle
+function initConsoleLoggingToggle() {
+  const toggle = document.getElementById('consoleLoggingToggle');
+  
+  if (toggle) {
+    toggle.addEventListener('change', toggleConsoleLogging);
   }
 }
 
@@ -7596,7 +7887,13 @@ function exportToJSON(data, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${filename}.json`;
+  
+  // Generate filename with date and time
+  const now = new Date();
+  const timestamp = now.toISOString().slice(0, 19).replace(/[:-]/g, '').replace('T', '_');
+  const filenameWithTimestamp = `${filename}_${timestamp}`;
+  
+  a.download = `${filenameWithTimestamp}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -7648,7 +7945,13 @@ function exportToExcel(data, headers, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${filename}.csv`;
+  
+  // Generate filename with date and time
+  const now = new Date();
+  const timestamp = now.toISOString().slice(0, 19).replace(/[:-]/g, '').replace('T', '_');
+  const filenameWithTimestamp = `${filename}_${timestamp}`;
+  
+  a.download = `${filenameWithTimestamp}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -7656,7 +7959,7 @@ function exportToExcel(data, headers, filename) {
 }
 
 // Export to PDF
-function exportToPDF(data, headers, filename, dataType) {
+async function exportToPDF(data, headers, filename, dataType) {
   if (!window.jspdf || !window.jspdf.jsPDF) {
     showToast('error', 'PDF Error', 'PDF library not loaded');
     return;
@@ -7665,59 +7968,148 @@ function exportToPDF(data, headers, filename, dataType) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   
-  // Title
+  // Set default border properties - thin black borders
+  doc.setLineWidth(0.1);
+  doc.setDrawColor(0, 0, 0); // Black color
+  
+  // Get selected seller information
+  let sellerInfo = null;
+  try {
+    sellerInfo = await getSelectedSeller();
+  } catch (error) {
+    console.warn('Could not get seller information:', error);
+  }
+  
+  // Enhanced header with seller information
+  let y = 15;
+  const pageWidth = doc.internal.pageSize.width;
+  const margin = 20;
+  
+  // Company header (if seller info available)
+  if (sellerInfo && sellerInfo.businessName) {
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(0, 0, 0); // Black text
+    const businessNameLines = doc.splitTextToSize(sellerInfo.businessName, pageWidth - 2 * margin);
+    businessNameLines.forEach(line => {
+      doc.text(line, pageWidth / 2, y, { align: 'center' });
+      y += 7;
+    });
+    
+    // Seller NTN and Address
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(60, 60, 60); // Dark gray text
+    
+    let sellerDetails = [];
+    if (sellerInfo.ntn) sellerDetails.push(`NTN: ${sellerInfo.ntn}`);
+    if (sellerInfo.address) sellerDetails.push(sellerInfo.address);
+    if (sellerInfo.province) sellerDetails.push(sellerInfo.province);
+    
+    if (sellerDetails.length > 0) {
+      const sellerDetailText = sellerDetails.join(' | ');
+      const sellerDetailLines = doc.splitTextToSize(sellerDetailText, pageWidth - 2 * margin);
+      sellerDetailLines.forEach(line => {
+        doc.text(line, pageWidth / 2, y, { align: 'center' });
+        y += 5;
+      });
+    }
+    
+    y += 5;
+    
+    // Add separator line - thin black
+    doc.setLineWidth(0.2);
+    doc.setDrawColor(0, 0, 0);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 10;
+  }
+  
+  // Main title
   doc.setFontSize(16);
   doc.setFont(undefined, 'bold');
-  doc.text(`${dataType.charAt(0).toUpperCase() + dataType.slice(1)} Export Report`, 20, 20);
+  doc.setTextColor(0, 0, 0);
+  const titleText = `${dataType.charAt(0).toUpperCase() + dataType.slice(1)} Export Report`;
+  doc.text(titleText, margin, y);
+  y += 10;
   
-  // Date
+  // Generation info
   doc.setFontSize(10);
   doc.setFont(undefined, 'normal');
-  doc.text(`Generated on: ${formatDateForDisplay(new Date())}`, 20, 30);
+  doc.setTextColor(60, 60, 60);
+  const dateText = `Generated on: ${formatDateForDisplay(new Date())}`;
+  doc.text(dateText, margin, y);
   
-  // Table
-  let y = 45;
+  // Record count
+  const recordCountText = `Total Records: ${data.length}`;
+  doc.text(recordCountText, pageWidth - margin, y, { align: 'right' });
+  y += 15;
+  
+  // Table setup
   const pageHeight = doc.internal.pageSize.height;
-  const margin = 20;
-  const rowHeight = 8;
-  const colWidth = (doc.internal.pageSize.width - 2 * margin) / headers.length;
+  const availableWidth = pageWidth - 2 * margin;
+  const minColWidth = 25; // Minimum column width
+  const maxColWidth = availableWidth / 3; // Maximum column width
+  let colWidth = availableWidth / headers.length;
   
-  // Headers
-  doc.setFontSize(9);
-  doc.setFont(undefined, 'bold');
-  doc.setFillColor(240, 240, 240);
+  // Adjust column width if too narrow
+  if (colWidth < minColWidth) {
+    colWidth = Math.min(minColWidth, maxColWidth);
+  }
   
-  headers.forEach((header, i) => {
-    const x = margin + i * colWidth;
-    doc.rect(x, y, colWidth, rowHeight, 'F');
-    doc.rect(x, y, colWidth, rowHeight);
-    doc.text(header, x + 2, y + 5);
-  });
+  const rowHeight = 10; // Increased row height for better text wrapping
+  const headerHeight = 12;
   
-  y += rowHeight;
-  doc.setFont(undefined, 'normal');
-  
-  // Data rows
-  data.forEach((row, rowIndex) => {
-    if (y + rowHeight > pageHeight - margin) {
-      doc.addPage();
-      y = margin;
-      
-      // Redraw headers on new page
-      doc.setFont(undefined, 'bold');
-      doc.setFillColor(240, 240, 240);
-      headers.forEach((header, i) => {
-        const x = margin + i * colWidth;
-        doc.rect(x, y, colWidth, rowHeight, 'F');
-        doc.rect(x, y, colWidth, rowHeight);
-        doc.text(header, x + 2, y + 5);
-      });
-      y += rowHeight;
-      doc.setFont(undefined, 'normal');
-    }
+  // Function to draw table headers
+  function drawHeaders(startY) {
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'bold');
     
     headers.forEach((header, i) => {
       const x = margin + i * colWidth;
+      
+      // Set fill color for each header cell individually
+      doc.setFillColor(240, 240, 240); // Light gray background
+      doc.setDrawColor(0, 0, 0); // Black borders
+      doc.setLineWidth(0.1); // Thin borders
+      
+      // Draw filled rectangle with border
+      doc.rect(x, startY, colWidth, headerHeight, 'FD'); // Fill and Draw
+      
+      // Set text color and draw header text
+      doc.setTextColor(0, 0, 0); // Black text
+      
+      // Split header text to fit column width
+      const headerLines = doc.splitTextToSize(header, colWidth - 4);
+      const lineHeight = 4;
+      const totalTextHeight = headerLines.length * lineHeight;
+      const textStartY = startY + (headerHeight - totalTextHeight) / 2 + lineHeight;
+      
+      headerLines.forEach((line, lineIndex) => {
+        doc.text(line, x + 2, textStartY + lineIndex * lineHeight);
+      });
+    });
+    
+    return startY + headerHeight;
+  }
+  
+  // Draw initial headers
+  y = drawHeaders(y);
+  
+  // Reset properties for data rows (no fill color)
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(0, 0, 0);
+  doc.setLineWidth(0.1); // Reset to thin borders for data rows
+  doc.setDrawColor(0, 0, 0); // Black borders
+  // Clear any fill color for data rows
+  doc.setFillColor(255, 255, 255); // White background for data rows
+  
+  // Data rows with improved text wrapping
+  data.forEach((row, rowIndex) => {
+    let maxRowHeight = rowHeight;
+    let cellContents = [];
+    
+    // First pass: calculate required height for each cell
+    headers.forEach((header, i) => {
       const key = header.toLowerCase().replace(/\s+/g, '');
       let value = '';
       
@@ -7744,69 +8136,729 @@ function exportToPDF(data, headers, filename, dataType) {
         default: value = row[key] || '';
       }
       
-      doc.rect(x, y, colWidth, rowHeight);
-      const text = doc.splitTextToSize(String(value), colWidth - 4);
-      doc.text(text, x + 2, y + 5);
+      const cellText = doc.splitTextToSize(String(value), colWidth - 4);
+      cellContents[i] = cellText;
+      const cellHeight = Math.max(cellText.length * 4 + 2, rowHeight);
+      maxRowHeight = Math.max(maxRowHeight, cellHeight);
     });
     
-    y += rowHeight;
+    // Check if we need a new page
+    if (y + maxRowHeight > pageHeight - margin) {
+      doc.addPage();
+      y = margin + 10;
+      
+      // Redraw headers on new page with proper styling
+      y = drawHeaders(y);
+      
+      // Reset properties for data rows after header redraw (no fill color)
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(0, 0, 0);
+      doc.setLineWidth(0.1);
+      doc.setDrawColor(0, 0, 0);
+      // Clear any fill color for data rows
+      doc.setFillColor(255, 255, 255); // White background for data rows
+    }
+    
+    // Draw row with proper text wrapping
+    headers.forEach((header, i) => {
+      const x = margin + i * colWidth;
+      
+      // Draw cell border with thin black lines (no fill)
+      doc.setLineWidth(0.1);
+      doc.setDrawColor(0, 0, 0);
+      doc.rect(x, y, colWidth, maxRowHeight); // Border only, no fill
+      
+      // Draw cell content with proper alignment
+      const cellText = cellContents[i];
+      if (cellText && cellText.length > 0) {
+        doc.setTextColor(0, 0, 0); // Ensure black text
+        const lineHeight = 4;
+        cellText.forEach((line, lineIndex) => {
+          const textY = y + 4 + lineIndex * lineHeight;
+          doc.text(line, x + 2, textY);
+        });
+      }
+    });
+    
+    y += maxRowHeight;
   });
   
-  doc.save(`${filename}.pdf`);
+  // Footer on last page
+  doc.setFontSize(8);
+  doc.setTextColor(100, 100, 100);
+  const footerY = pageHeight - 15;
+  doc.text('Generated by FBR Digital Invoicing System', margin, footerY);
+  doc.text(`Page ${doc.internal.getNumberOfPages()}`, pageWidth - margin, footerY, { align: 'right' });
+  
+  // Generate filename with date and time
+  const now = new Date();
+  const timestamp = now.toISOString().slice(0, 19).replace(/[:-]/g, '').replace('T', '_');
+  const filenameWithTimestamp = `${filename}_${timestamp}`;
+  
+  doc.save(`${filenameWithTimestamp}.pdf`);
 }
 
-// Export invoices to PDF with full invoice format
+// Export invoices to PDF with full invoice format (using the same layout as view invoice modal)
 async function exportInvoicesToPDF(invoices, filename) {
   if (!window.jspdf || !window.jspdf.jsPDF) {
     showToast('error', 'PDF Error', 'PDF library not loaded');
     return;
   }
   
+  try {
+    // For single invoice, use the exact same function as view invoice modal
+    if (invoices.length === 1) {
+      const invoice = await dbGet(STORE_NAMES.invoices, invoices[0].id);
+      if (invoice) {
+        const invoiceResponse = {
+          ...invoice,
+          seller: null, // Will be fetched in generateInvoicePDF
+          buyer: null,  // Will be fetched in generateInvoicePDF
+          invoiceNumber: invoice.invoiceNumber || 'N/A',
+          dated: invoice.dated || invoice.invoiceDate,
+          invoiceRefNo: invoice.invoiceRefNo || invoice.invoiceRef,
+          currency: invoice.currency || 'PKR',
+          // Ensure items are available - prefer invoicePayload.items
+          items: invoice.invoicePayload?.items || invoice.items || [],
+          invoicePayload: invoice.invoicePayload || {},
+          totalAmount: invoice.totalAmount || 0,
+          status: invoice.status || 'draft'
+        };
+        
+        // Use the EXACT same function as the "Download as PDF" button in view invoice modal
+        await generateInvoicePDF(invoiceResponse, invoice.status === 'draft', false);
+        return;
+      }
+    }
+    
+    // For multiple invoices, create combined PDF using the exact same layout as view invoice modal
+    await createCombinedPDFWithSameLayout(invoices, filename);
+    
+  } catch (error) {
+    console.error('Error exporting invoices to PDF:', error);
+    showToast('error', 'Export Failed', 'Failed to export invoices to PDF: ' + error.message);
+  }
+}
+
+// Create combined PDF using the exact same layout as view invoice modal
+async function createCombinedPDFWithSameLayout(invoices, filename) {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const masterDoc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  
+  showToast('info', 'Processing', `Creating combined PDF with ${invoices.length} invoices...`);
   
   for (let i = 0; i < invoices.length; i++) {
-    if (i > 0) doc.addPage();
+    if (i > 0) masterDoc.addPage();
     
     const invoice = await dbGet(STORE_NAMES.invoices, invoices[i].id);
-    if (invoice) {
-      await generateSingleInvoicePDF(doc, invoice, false);
+    if (!invoice) continue;
+    
+    // Create proper response object
+    const invoiceResponse = {
+      ...invoice,
+      seller: null, // Will be fetched in generateInvoicePDF
+      buyer: null,  // Will be fetched in generateInvoicePDF
+      invoiceNumber: invoice.invoiceNumber || 'N/A',
+      dated: invoice.dated || invoice.invoiceDate,
+      invoiceRefNo: invoice.invoiceRefNo || invoice.invoiceRef,
+      currency: invoice.currency || 'PKR',
+      // Ensure items are available - prefer invoicePayload.items
+      items: invoice.invoicePayload?.items || invoice.items || [],
+      invoicePayload: invoice.invoicePayload || {},
+      totalAmount: invoice.totalAmount || 0,
+      status: invoice.status || 'draft'
+    };
+    
+    // Use the EXACT same layout generation as the view invoice modal
+    await generateInvoicePDFForCombined(masterDoc, invoiceResponse, invoice.status === 'draft');
+  }
+  
+  // Generate filename with date and time
+  const now = new Date();
+  const timestamp = now.toISOString().slice(0, 19).replace(/[:-]/g, '').replace('T', '_');
+  const filenameWithTimestamp = `${filename}_${timestamp}`;
+  
+  masterDoc.save(`${filenameWithTimestamp}.pdf`);
+  
+  showToast('success', 'PDF Downloaded', `${invoices.length} invoices exported to combined PDF successfully`);
+}
+
+// Generate PDF content for combined PDF (modified version of generateInvoicePDF)
+async function generateInvoicePDFForCombined(doc, response, isDummy = false) {
+  await generateInvoicePDFContent(doc, response, isDummy);
+}
+
+// Core PDF generation content (extracted from generateInvoicePDF for reuse)
+async function generateInvoicePDFContent(doc, response, isDummy = false) {
+  // Use the exact same layout configuration as the original generateInvoicePDF
+  const layoutConfig = {
+    margin: { top: 5, left: 10, right: 10, bottom: 10 },
+    pageWidth: 210, // A4 width in mm
+    pageHeight: 297, // A4 height in mm
+    colWidths: [14, 22, 53, 13, 16, 20, 18, 18, 20], // Adjusted for description wrapping
+    rowHeight: 7,
+    headerBgColor: [230, 230, 230], // Grey background
+    borderWidths: { top: 2, bottom: 2, left: 4, right: 2 }
+  };
+  
+  // Get data (exactly as in original generateInvoicePDF)
+  const seller = response?.seller || await getSelectedSeller();
+  const buyer = response?.buyer || await getSelectedBuyer();
+  const invoiceDate = formatDateForDisplay(response?.dated || response?.invoicePayload?.invoiceDate || DOMElements.invoiceDate.value);
+  const invoiceRef = response?.invoiceRefNo || response?.invoicePayload?.invoiceRefNo || DOMElements.invoiceRef.value;
+  const currency = response?.currency || DOMElements.currency.value;
+  const invoiceNumber = response?.invoiceNumber || "N/A";
+  // Fix: Get items from invoicePayload.items first, then fallback to root items
+  const itemsList = response?.invoicePayload?.items || response?.items || [];
+
+  // Function to wrap text (exactly as in original)
+  const wrapText = (text, x, y, maxWidth, lineHeight = 5) => {
+    const lines = doc.splitTextToSize(text, maxWidth);
+    lines.forEach((line, i) => doc.text(line, x, y + i * lineHeight));
+    return lines.length * lineHeight;
+  };
+
+  // Generate content (exactly as in original generateInvoicePDF)
+  let y = layoutConfig.margin.top + 10;
+  const x = layoutConfig.margin.left;
+
+  // Header - Get sales type from invoice data
+  const invoiceType = response?.invoiceType || response?.invoicePayload?.invoiceType || DOMElements.invoiceType?.value || 'Sale Invoice';
+  const salesType = invoiceType.replace(' Invoice', '');
+  
+  doc.setFontSize(20);
+  doc.setFont(undefined, "bold");
+  const headerText = `${salesType} Invoice`;
+  const headerWidth = doc.getTextWidth(headerText);
+  const wrappedHeaderHeight = wrapText(headerText, layoutConfig.pageWidth / 2 - headerWidth / 2, y, layoutConfig.pageWidth - 20);
+  y += wrappedHeaderHeight + 5;
+
+  // Logo and QR Code (exactly as in original)
+  const logo = new Image();
+  logo.src = "FBRDigitalInvoiceLogo.png";
+  await new Promise(resolve => { logo.onload = resolve; });
+  doc.addImage(logo, "PNG", x, layoutConfig.margin.top, 35, 20);
+
+  // QR code at top right
+  const qrText = invoiceNumber;
+  try {
+    const qrUrl = await QRCode.toDataURL(qrText, { errorCorrectionLevel: 'H' });
+    const qrWidth = 35;
+    doc.addImage(
+      qrUrl,
+      "PNG",
+      layoutConfig.pageWidth - layoutConfig.margin.right - qrWidth,
+      layoutConfig.margin.top,
+      qrWidth,
+      qrWidth
+    );
+  } catch (err) {
+    console.error("QR Code Error:", err);
+  }
+
+  // Invoice Info Section (exactly as in original)
+  y += 20;
+  const leftX = x, rightX = 120;
+  let leftY = y, rightY = y;
+
+  doc.setFontSize(11);
+  doc.setFont(undefined, "bold");
+  doc.text("Invoice Date:", leftX, leftY);
+  doc.setFont(undefined, "normal");
+  leftY += wrapText(invoiceDate, leftX + 32, leftY, 80);
+
+  doc.setFont(undefined, "bold");
+  doc.text("Payment Mode:", leftX, leftY);
+  doc.setFont(undefined, "normal");
+  const paymentMode = response?.paymentMode || document.getElementById('paymentMode')?.value || 'Cash';
+  leftY += wrapText(paymentMode, leftX + 32, leftY, 80);
+
+  doc.setFont(undefined, "bold");
+  doc.text("Currency:", leftX, leftY);
+  doc.setFont(undefined, "normal");
+  leftY += wrapText(currency, leftX + 32, leftY, 80);
+
+  doc.setFont(undefined, "bold");
+  doc.text("Invoice Ref No.:", rightX, rightY);
+  doc.setFont(undefined, "normal");
+  rightY += wrapText(invoiceRef, rightX + 38, rightY, 60);
+
+  doc.setFont(undefined, "bold");
+  doc.text("FBR Invoice No.:", rightX, rightY);
+  doc.setFont(undefined, "normal");
+  rightY += wrapText(invoiceNumber, rightX + 38, rightY, 45);
+
+  // Seller/Buyer Info (exactly as in original)
+  y = Math.max(leftY, rightY) + 10;
+  doc.setFont(undefined, "bold");
+  doc.text("Seller Information", leftX, y);
+  doc.text("Buyer Information", rightX, y);
+  doc.setFont(undefined, "normal");
+
+  y += 5;
+  leftY = y;
+  rightY = y;
+  leftY += wrapText(`Name: ${seller?.businessName || ''}`, leftX, leftY, 90);
+  leftY += wrapText(`NTN: ${seller?.ntn || ''}`, leftX, leftY, 90);
+  leftY += wrapText(`Address: ${seller?.address || ''}, ${seller?.province || ''}`, leftX, leftY, 90);
+
+  rightY += wrapText(`Name: ${buyer?.businessName || ''}`, rightX, rightY, 80);
+  rightY += wrapText(`NTN: ${buyer?.ntn || ''}`, rightX, rightY, 80);
+  rightY += wrapText(`Address: ${buyer?.address || ''}, ${buyer?.province || ''}`, rightX, rightY, 80);
+
+  // Invoice Details Title (exactly as in original)
+  y = Math.max(leftY, rightY) + 10;
+  doc.setFont(undefined, "bold");
+  doc.setFontSize(13);
+  doc.text("Invoice Details", layoutConfig.pageWidth / 2, y, { align: "center" });
+
+  // Items Table (exactly as in original generateInvoicePDF)
+  y += 6;
+  const headers = ["Sr. No.", "HS Code", "Description", "Qty", "Rate", "Amount", "Tax %", "Tax Amt", "Total"];
+  doc.setFontSize(9);
+  doc.setFont(undefined, "bold");
+  doc.setFillColor(...layoutConfig.headerBgColor);
+
+  // Calculate table width and left position for border
+  const tableX = x;
+  const tableWidth = layoutConfig.colWidths.reduce((a, b) => a + b, 0);
+
+  // Store row positions for border
+  let tableStartY = y;
+  let tableEndY = y;
+
+  // Draw header row (exactly as in original)
+  let headerX = tableX;
+  headers.forEach((header, i) => {
+    doc.setFillColor(...layoutConfig.headerBgColor);
+    doc.rect(headerX, y, layoutConfig.colWidths[i], layoutConfig.rowHeight, "F");
+    doc.setLineWidth(0.15); // thinner border
+    doc.rect(headerX, y, layoutConfig.colWidths[i], layoutConfig.rowHeight);
+    doc.setTextColor(0, 0, 0);
+    const headerLines = doc.splitTextToSize(header, layoutConfig.colWidths[i] - 2);
+    let headerY = y + 4;
+    headerLines.forEach((line, idx) => {
+      doc.text(line, headerX + 1, headerY + idx * 4, { maxWidth: layoutConfig.colWidths[i] - 2 });
+    });
+    headerX += layoutConfig.colWidths[i];
+  });
+  doc.setTextColor(0, 0, 0);
+
+  y += layoutConfig.rowHeight;
+  doc.setFont(undefined, "normal");
+
+  // Summary Section calculation (exactly as in original)
+  const summaryBoxWidth = 80;
+  const summaryBoxHeight = 22;
+  const summaryX = layoutConfig.pageWidth - layoutConfig.margin.right - summaryBoxWidth + 3;
+  y = y + 2;
+  const summaryYBox = layoutConfig.pageHeight - layoutConfig.margin.bottom - summaryBoxHeight;
+
+  // Calculate summary values (exactly as in original but with correct field mapping)
+  const gross = itemsList.reduce((sum, i) => {
+    const amount = Number(i.valueSalesExcludingST || (i.quantity * i.unitPrice) || 0);
+    return sum + amount;
+  }, 0);
+  
+  const tax = itemsList.reduce((sum, i) => {
+    const taxRateVal = i.taxRate || parseFloat(i.rate?.replace('%', '')) || 0;
+    const salesTax = Number(i.salesTaxApplicable || ((i.valueSalesExcludingST || (i.quantity * i.unitPrice)) * taxRateVal / 100) || 0);
+    const extraTax = Number(i.extraTax || 0);
+    const furtherTax = Number(i.furtherTax || 0);
+    return sum + salesTax + extraTax + furtherTax;
+  }, 0);
+  
+  const totalDiscount = itemsList.reduce((sum, i) => sum + Number(i.discount || 0), 0);
+  const total = gross + tax - totalDiscount;
+
+  // Draw item rows (exactly as in original)
+  let rowYs = [];
+  let lastRowIdx = itemsList.length - 1;
+  
+  itemsList.forEach((item, idx) => {
+    // Handle both invoicePayload.items structure and regular items structure
+    const quantity = item.quantity || 1;
+    const unitPrice = item.unitPrice || (item.valueSalesExcludingST / quantity) || 0;
+    const amount = Number(item.valueSalesExcludingST || (quantity * unitPrice) || 0);
+    const taxRateVal = item.taxRate || parseFloat(item.rate?.replace('%', '')) || 0;
+    const salesTaxAmt = Number(item.salesTaxApplicable || (amount * taxRateVal / 100) || 0);
+    const extraTax = Number(item.extraTax || 0);
+    const furtherTax = Number(item.furtherTax || 0);
+    const discount = Number(item.discount || 0);
+    const taxAmt = salesTaxAmt + extraTax + furtherTax;
+    const total = amount + taxAmt - discount;
+
+    const row = [
+      (idx + 1).toString(),
+      item.hsCode || '',
+      item.productDescription || item.description || '',
+      String(quantity),
+      `${unitPrice.toFixed(2)}`,
+      `${amount.toFixed(2)}`,
+      `${taxRateVal.toFixed(2)}%`,
+      `${taxAmt.toFixed(2)}`,
+      `${total.toFixed(2)}`
+    ];
+
+    let cellX = tableX;
+    let maxCellHeight = layoutConfig.rowHeight;
+
+    // Calculate max height for this row
+    const cellHeights = row.map((cell, i) => {
+      const lines = doc.splitTextToSize(cell, layoutConfig.colWidths[i] - 2);
+      return lines.length * 4 + 2;
+    });
+    maxCellHeight = Math.max(...cellHeights, layoutConfig.rowHeight);
+
+    // Page break if needed (exactly as in original)
+    if (y + maxCellHeight > layoutConfig.pageHeight - layoutConfig.margin.bottom - 30) {
+      doc.setLineWidth(0.2);
+      doc.rect(tableX, tableStartY, tableWidth, y - tableStartY);
+      doc.addPage();
+      y = layoutConfig.margin.top;
+      tableStartY = y;
+      // Redraw header on new page
+      let headerX2 = tableX;
+      headers.forEach((header, i) => {
+        doc.setFillColor(...layoutConfig.headerBgColor);
+        doc.rect(headerX2, y, layoutConfig.colWidths[i], layoutConfig.rowHeight, "F");
+        doc.setLineWidth(0.15);
+        doc.rect(headerX2, y, layoutConfig.colWidths[i], layoutConfig.rowHeight);
+        doc.setTextColor(0, 0, 0);
+        const headerLines = doc.splitTextToSize(header, layoutConfig.colWidths[i] - 2);
+        let headerY = y + 4;
+        headerLines.forEach((line) => {
+          doc.text(line, headerX2 + 1, headerY, { maxWidth: layoutConfig.colWidths[i] - 2 });
+          headerY += 4;
+        });
+        headerX2 += layoutConfig.colWidths[i];
+      });
+      doc.setTextColor(0, 0, 0);
+      y += layoutConfig.rowHeight;
+    }
+
+    // Draw cells with wrapped text and thin border (exactly as in original)
+    row.forEach((cell, i) => {
+      doc.setLineWidth(0.15);
+      doc.rect(cellX, y, layoutConfig.colWidths[i], maxCellHeight);
+      const lines = doc.splitTextToSize(cell, layoutConfig.colWidths[i] - 2);
+      let textY = y + 5;
+      lines.forEach((line) => {
+        if (textY + 2 <= y + maxCellHeight) {
+          doc.text(line, cellX + 1, textY, { maxWidth: layoutConfig.colWidths[i] - 2 });
+          textY += 4;
+        }
+      });
+      cellX += layoutConfig.colWidths[i];
+    });
+
+    rowYs.push({ y, height: maxCellHeight });
+    y += maxCellHeight;
+  });
+
+  // Add gap and draw borders (exactly as in original)
+  y += 6;
+  tableEndY = y - 5;
+
+  doc.setLineWidth(0.3);
+  doc.rect(tableX, tableStartY, tableWidth, summaryYBox - tableStartY);
+
+  // Draw summary box (exactly as in original)
+  doc.setLineWidth(0.3);
+  doc.rect(summaryX, summaryYBox, summaryBoxWidth, summaryBoxHeight);
+
+  const rowH = summaryBoxHeight / 3;
+  for (let i = 1; i < 3; i++) {
+    doc.line(summaryX, summaryYBox + i * rowH, summaryX + summaryBoxWidth, summaryYBox + i * rowH);
+  }
+  const labelWidth = 32;
+  doc.line(summaryX + labelWidth, summaryYBox, summaryX + labelWidth, summaryYBox + summaryBoxHeight);
+
+  // Place summary labels and values (exactly as in original)
+  doc.setFont(undefined, "bold");
+  doc.text("Gross Amount:", summaryX + 2, summaryYBox + rowH / 2 + 1.5);
+  doc.text("Sales Tax:", summaryX + 2, summaryYBox + rowH + rowH / 2 + 1.5);
+  doc.text("Total Amount:", summaryX + 2, summaryYBox + 2 * rowH + rowH / 2 + 1.5);
+
+  doc.setFont(undefined, "normal");
+  doc.text(`${gross.toFixed(2)}`, summaryX + labelWidth + 2, summaryYBox + rowH / 2 + 1.5);
+  doc.text(`${tax.toFixed(2)}`, summaryX + labelWidth + 2, summaryYBox + rowH + rowH / 2 + 1.5);
+  doc.text(`${total.toFixed(2)}`, summaryX + labelWidth + 2, summaryYBox + 2 * rowH + rowH / 2 + 1.5);
+
+  // Footer (exactly as in original)
+  doc.setFont(undefined, "italic");
+  doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.text(
+    "This is a system generated Invoice, signature not required.",
+    layoutConfig.pageWidth / 2,
+    layoutConfig.pageHeight - layoutConfig.margin.bottom + 5,
+    { align: "center" }
+  );
+  doc.setTextColor(0, 0, 0);
+}
+
+// Generate single invoice PDF (enhanced version with full invoice details)
+async function generateSingleInvoicePDF(doc, invoice, isNewDoc = true) {
+  const margin = 15;
+  const pageWidth = doc.internal.pageSize.width;
+  const pageHeight = doc.internal.pageSize.height;
+  let y = margin + 10;
+  
+  // Set default border properties - thin black borders
+  doc.setLineWidth(0.1);
+  doc.setDrawColor(0, 0, 0);
+  
+  // Get seller and buyer information
+  let sellerInfo = null;
+  let buyerInfo = null;
+  
+  try {
+    if (invoice.sellerNTNCNIC || invoice.seller?.ntn) {
+      sellerInfo = await dbGet(STORE_NAMES.sellers, invoice.sellerNTNCNIC || invoice.seller?.ntn);
+    }
+    if (invoice.buyerNTNCNIC || invoice.buyer?.ntn) {
+      buyerInfo = await dbGet(STORE_NAMES.buyers, invoice.buyerNTNCNIC || invoice.buyer?.ntn);
+    }
+  } catch (error) {
+    console.warn('Could not get seller/buyer information for PDF:', error);
+  }
+  
+  // Header with seller information
+  if (sellerInfo && sellerInfo.businessName) {
+    doc.setFontSize(18);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(0, 0, 0);
+    const businessNameLines = doc.splitTextToSize(sellerInfo.businessName, pageWidth - 2 * margin);
+    businessNameLines.forEach(line => {
+      doc.text(line, pageWidth / 2, y, { align: 'center' });
+      y += 8;
+    });
+    
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(60, 60, 60);
+    
+    let sellerDetails = [];
+    if (sellerInfo.ntn) sellerDetails.push(`NTN: ${sellerInfo.ntn}`);
+    if (sellerInfo.address) sellerDetails.push(sellerInfo.address);
+    if (sellerInfo.province) sellerDetails.push(sellerInfo.province);
+    
+    if (sellerDetails.length > 0) {
+      const sellerDetailText = sellerDetails.join(' | ');
+      const sellerDetailLines = doc.splitTextToSize(sellerDetailText, pageWidth - 2 * margin);
+      sellerDetailLines.forEach(line => {
+        doc.text(line, pageWidth / 2, y, { align: 'center' });
+        y += 5;
+      });
+    }
+    
+    y += 8;
+    doc.setLineWidth(0.2);
+    doc.setDrawColor(0, 0, 0);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 15;
+  }
+  
+  // Invoice title
+  const invoiceType = invoice.invoiceType || 'Sale Invoice';
+  const salesType = invoiceType.replace(' Invoice', '');
+  doc.setFontSize(20);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text(`${salesType} Invoice`, pageWidth / 2, y, { align: 'center' });
+  y += 20;
+  
+  // QR Code section
+  if (window.QRCode) {
+    const qrCanvas = document.createElement('canvas');
+    const qrText = invoice.invoiceNumber || invoice.invoiceRefNo || 'N/A';
+    try {
+      await QRCode.toCanvas(qrCanvas, qrText, { width: 100, errorCorrectionLevel: 'H' });
+      const qrUrl = qrCanvas.toDataURL('image/png');
+      doc.addImage(qrUrl, 'PNG', pageWidth - margin - 25, y - 15, 20, 20);
+    } catch (error) {
+      console.warn('Could not generate QR code:', error);
     }
   }
   
-  doc.save(`${filename}.pdf`);
-}
-
-// Generate single invoice PDF (simplified version)
-async function generateSingleInvoicePDF(doc, invoice, isNewDoc = true) {
-  const margin = 10;
-  let y = margin + 10;
-  
-  // Title
-  doc.setFontSize(16);
-  doc.setFont(undefined, 'bold');
-  doc.text('Invoice', doc.internal.pageSize.width / 2, y, { align: 'center' });
-  y += 15;
-  
-  // Invoice details
-  doc.setFontSize(10);
+  // Invoice information section
+  doc.setFontSize(11);
   doc.setFont(undefined, 'normal');
-  doc.text(`Reference: ${invoice.invoiceRefNo || ''}`, margin, y);
-  doc.text(`Date: ${formatDateForDisplay(invoice.dated || invoice.invoiceDate)}`, margin + 100, y);
-  y += 10;
+  doc.setTextColor(0, 0, 0);
   
-  doc.text(`Seller: ${invoice.sellerBusinessName || ''}`, margin, y);
-  y += 6;
-  doc.text(`Buyer: ${invoice.buyerBusinessName || ''}`, margin, y);
-  y += 6;
-  doc.text(`Total: ${(invoice.totalAmount || 0).toFixed(2)} PKR`, margin, y);
-  y += 6;
-  doc.text(`Status: ${invoice.status || 'draft'}`, margin, y);
+  const leftColX = margin;
+  const rightColX = pageWidth / 2 + 10;
+  const lineHeight = 6;
   
+  // Left column - Invoice details
+  let leftY = y;
+  doc.setFont(undefined, 'bold');
+  doc.text('Invoice Details:', leftColX, leftY);
+  leftY += 8;
+  doc.setFont(undefined, 'normal');
+  
+  doc.text(`Reference: ${invoice.invoiceRefNo || 'N/A'}`, leftColX, leftY); leftY += lineHeight;
+  doc.text(`Date: ${formatDateForDisplay(invoice.dated || invoice.invoiceDate)}`, leftColX, leftY); leftY += lineHeight;
+  doc.text(`Type: ${invoiceType}`, leftColX, leftY); leftY += lineHeight;
+  doc.text(`Currency: ${invoice.currency || 'PKR'}`, leftColX, leftY); leftY += lineHeight;
+  doc.text(`Status: ${invoice.status || 'draft'}`, leftColX, leftY); leftY += lineHeight;
   if (invoice.invoiceNumber) {
-    y += 6;
-    doc.text(`FBR Invoice Number: ${invoice.invoiceNumber}`, margin, y);
+    doc.text(`FBR Invoice #: ${invoice.invoiceNumber}`, leftColX, leftY); leftY += lineHeight;
   }
+  
+  // Right column - Seller & Buyer info
+  let rightY = y;
+  doc.setFont(undefined, 'bold');
+  doc.text('Seller Information:', rightColX, rightY);
+  rightY += 8;
+  doc.setFont(undefined, 'normal');
+  
+  if (sellerInfo) {
+    doc.text(`Name: ${sellerInfo.businessName}`, rightColX, rightY); rightY += lineHeight;
+    doc.text(`NTN: ${sellerInfo.ntn}`, rightColX, rightY); rightY += lineHeight;
+    if (sellerInfo.address) {
+      const addressLines = doc.splitTextToSize(`Address: ${sellerInfo.address}`, (pageWidth / 2) - 20);
+      addressLines.forEach(line => {
+        doc.text(line, rightColX, rightY);
+        rightY += lineHeight;
+      });
+    }
+  }
+  
+  rightY += 5;
+  doc.setFont(undefined, 'bold');
+  doc.text('Buyer Information:', rightColX, rightY);
+  rightY += 8;
+  doc.setFont(undefined, 'normal');
+  
+  const buyerName = invoice.buyerBusinessName || buyerInfo?.businessName || 'N/A';
+  const buyerNTN = invoice.buyerNTNCNIC || buyerInfo?.ntn || 'N/A';
+  doc.text(`Name: ${buyerName}`, rightColX, rightY); rightY += lineHeight;
+  doc.text(`NTN: ${buyerNTN}`, rightColX, rightY); rightY += lineHeight;
+  
+  y = Math.max(leftY, rightY) + 15;
+  
+  // Items table
+  if (invoice.items && invoice.items.length > 0) {
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text('Invoice Items:', margin, y);
+    y += 10;
+    
+    // Table headers
+    const headers = ['Sr. No.', 'HS Code', 'Description', 'Qty', 'Rate', 'Amount', 'Tax %', 'Tax Amt', 'Total'];
+    const colWidths = [12, 18, 50, 12, 15, 18, 12, 15, 18];
+    const headerHeight = 8;
+    
+    doc.setFontSize(9);
+    doc.setFillColor(240, 240, 240);
+    doc.setLineWidth(0.1);
+    doc.setDrawColor(0, 0, 0);
+    
+    let x = margin;
+    headers.forEach((header, i) => {
+      doc.rect(x, y, colWidths[i], headerHeight, 'FD');
+      doc.setTextColor(0, 0, 0);
+      doc.text(header, x + 1, y + 5);
+      x += colWidths[i];
+    });
+    
+    y += headerHeight;
+    doc.setFont(undefined, 'normal');
+    
+    // Table rows
+    invoice.items.forEach((item, idx) => {
+      const rowHeight = 8;
+      
+      // Check if we need a new page
+      if (y + rowHeight > pageHeight - margin - 20) {
+        doc.addPage();
+        y = margin + 10;
+        
+        // Redraw headers
+        let headerX = margin;
+        headers.forEach((header, i) => {
+          doc.setFillColor(240, 240, 240);
+          doc.rect(headerX, y, colWidths[i], headerHeight, 'FD');
+          doc.setTextColor(0, 0, 0);
+          doc.setFont(undefined, 'bold');
+          doc.text(header, headerX + 1, y + 5);
+          headerX += colWidths[i];
+        });
+        y += headerHeight;
+        doc.setFont(undefined, 'normal');
+      }
+      
+      x = margin;
+      const quantity = item.quantity || 1;
+      const unitPrice = item.unitPrice || parseFloat(item.rate) || 0;
+      const amount = quantity * unitPrice;
+      const taxRate = item.taxRate || parseFloat(item.rate) || 0;
+      const taxAmount = amount * taxRate / 100;
+      const total = amount + taxAmount;
+      
+      const rowData = [
+        String(idx + 1),
+        item.hsCode || '',
+        item.productDescription || item.description || '',
+        String(quantity),
+        unitPrice.toFixed(2),
+        amount.toFixed(2),
+        `${taxRate.toFixed(2)}%`,
+        taxAmount.toFixed(2),
+        total.toFixed(2)
+      ];
+      
+      rowData.forEach((data, i) => {
+        doc.rect(x, y, colWidths[i], rowHeight);
+        if (i === 2) { // Description column - handle text wrapping
+          const lines = doc.splitTextToSize(data, colWidths[i] - 2);
+          doc.text(lines[0] || '', x + 1, y + 5);
+        } else {
+          doc.text(data, x + 1, y + 5);
+        }
+        x += colWidths[i];
+      });
+      
+      y += rowHeight;
+    });
+    
+    y += 10;
+  }
+  
+  // Summary section
+  const gross = invoice.items?.reduce((sum, item) => {
+    const amount = (item.quantity || 1) * (item.unitPrice || parseFloat(item.rate) || 0);
+    return sum + amount;
+  }, 0) || 0;
+  
+  const tax = invoice.items?.reduce((sum, item) => {
+    const amount = (item.quantity || 1) * (item.unitPrice || parseFloat(item.rate) || 0);
+    const taxRate = item.taxRate || parseFloat(item.rate) || 0;
+    return sum + (amount * taxRate / 100);
+  }, 0) || 0;
+  
+  const totalAmount = gross + tax;
+  
+  doc.setFontSize(12);
+  doc.setFont(undefined, 'bold');
+  const summaryX = pageWidth - margin - 60;
+  
+  doc.text(`Gross Amount: ${gross.toFixed(2)} ${invoice.currency || 'PKR'}`, summaryX, y);
+  y += 8;
+  doc.text(`Sales Tax: ${tax.toFixed(2)} ${invoice.currency || 'PKR'}`, summaryX, y);
+  y += 8;
+  doc.setFillColor(240, 240, 240);
+  doc.rect(summaryX - 5, y - 6, 65, 10, 'FD');
+  doc.text(`Total Amount: ${totalAmount.toFixed(2)} ${invoice.currency || 'PKR'}`, summaryX, y);
+  
+  // Footer
+  const footerY = pageHeight - 15;
+  doc.setFontSize(8);
+  doc.setTextColor(100, 100, 100);
+  doc.setFont(undefined, 'italic');
+  doc.text('This is a system generated Invoice, signature not required.', pageWidth / 2, footerY, { align: 'center' });
 }
 
 // === Global Exports for Components ===
@@ -7850,213 +8902,213 @@ console.log('✓ Database functions exported globally for components');
 console.log('✓ FBR Digital Invoicing App initialized successfully');
 
 // Test functions for modal functionality - can be called from console for testing
-window.testErrorModal = function() {
-  const testError = new Error("This is a test validation error with detailed information");
-  const testErrorDetails = {
-    errorCode: "TEST001",
-    timestamp: new Date().toISOString(),
-    submissionPayload: {
-      invoiceRefNo: "SI-TEST-001",
-      invoiceDate: "2024-01-15",
-      currency: "PKR",
-      items: [
-        {
-          productDescription: "Test Product",
-          quantity: 1,
-          unitPrice: 1000,
-          taxRate: 17
-        }
-      ]
-    },
-    validationErrors: [
-      {
-        field: "seller.ntn",
-        message: "Invalid NTN format",
-        code: "INVALID_NTN"
-      },
-      {
-        field: "buyer.registrationStatus",
-        message: "Buyer registration status is inactive",
-        code: "INACTIVE_BUYER"
-      },
-      {
-        field: "items[0].hsCode",
-        message: "HS Code is required for all items",
-        code: "MISSING_HS_CODE"
-      }
-    ],
-    response: {
-      status: "failed",
-      statusCode: 400,
-      message: "Test validation failed with multiple errors",
-      details: "This is a comprehensive test error to verify the full-width modal functionality. The error details container should now take up the full width and height available in the modal, making it easier to read detailed error information, stack traces, and debugging data.",
-      stackTrace: "Error: Test validation failed\n    at testErrorModal (app.js:7689)\n    at HTMLButtonElement.<anonymous> (app.js:7712)\n    at Object.handleSubmissionError (app.js:1746)\n    at Object.displayErrorModal (app.js:1752)"
-    }
-  };
+// window.testErrorModal = function() {
+//   const testError = new Error("This is a test validation error with detailed information");
+//   const testErrorDetails = {
+//     errorCode: "TEST001",
+//     timestamp: new Date().toISOString(),
+//     submissionPayload: {
+//       invoiceRefNo: "SI-TEST-001",
+//       invoiceDate: "2024-01-15",
+//       currency: "PKR",
+//       items: [
+//         {
+//           productDescription: "Test Product",
+//           quantity: 1,
+//           unitPrice: 1000,
+//           taxRate: 17
+//         }
+//       ]
+//     },
+//     validationErrors: [
+//       {
+//         field: "seller.ntn",
+//         message: "Invalid NTN format",
+//         code: "INVALID_NTN"
+//       },
+//       {
+//         field: "buyer.registrationStatus",
+//         message: "Buyer registration status is inactive",
+//         code: "INACTIVE_BUYER"
+//       },
+//       {
+//         field: "items[0].hsCode",
+//         message: "HS Code is required for all items",
+//         code: "MISSING_HS_CODE"
+//       }
+//     ],
+//     response: {
+//       status: "failed",
+//       statusCode: 400,
+//       message: "Test validation failed with multiple errors",
+//       details: "This is a comprehensive test error to verify the full-width modal functionality. The error details container should now take up the full width and height available in the modal, making it easier to read detailed error information, stack traces, and debugging data.",
+//       stackTrace: "Error: Test validation failed\n    at testErrorModal (app.js:7689)\n    at HTMLButtonElement.<anonymous> (app.js:7712)\n    at Object.handleSubmissionError (app.js:1746)\n    at Object.displayErrorModal (app.js:1752)"
+//     }
+//   };
   
-  console.log("Testing error modal with detailed sample data:", testErrorDetails);
-  handleSubmissionError(testError, testErrorDetails);
-};
+//   console.log("Testing error modal with detailed sample data:", testErrorDetails);
+//   handleSubmissionError(testError, testErrorDetails);
+// };
 
-// Test function for success modal
-window.testSuccessModal = function() {
-  const testResponse = {
-    fbrInvoiceNumber: "TEST-12345",
-    invoiceNumber: "SI-TEST-001", 
-    dated: new Date().toISOString(),
-    status: "submitted",
-    validationResponse: {
-      invoiceStatuses: [
-        {
-          itemSNo: "1",
-          statusCode: "200",
-          invoiceNo: "SI-TEST-001",
-          status: "Success",
-          errorCode: "",
-          error: ""
-        }
-      ]
-    }
-  };
+// // Test function for success modal
+// window.testSuccessModal = function() {
+//   const testResponse = {
+//     fbrInvoiceNumber: "TEST-12345",
+//     invoiceNumber: "SI-TEST-001", 
+//     dated: new Date().toISOString(),
+//     status: "submitted",
+//     validationResponse: {
+//       invoiceStatuses: [
+//         {
+//           itemSNo: "1",
+//           statusCode: "200",
+//           invoiceNo: "SI-TEST-001",
+//           status: "Success",
+//           errorCode: "",
+//           error: ""
+//         }
+//       ]
+//     }
+//   };
   
-  console.log("Testing success modal with sample data:", testResponse);
-  displaySuccessModal(testResponse);
-};
+//   console.log("Testing success modal with sample data:", testResponse);
+//   displaySuccessModal(testResponse);
+// };
 
-console.log('✓ Modal test functions available:');
-console.log('  - testErrorModal(): Test error modal display');
-console.log('  - testSuccessModal(): Test success modal display');
-console.log('  - testPreviewModal(): Test preview modal initialization');
-console.log('  - testTabSwitching(): Test tab switching functionality in success modal');
-console.log('');
-console.log('🔧 Quick test: Run testTabSwitching() to verify tab functionality');
-console.log('📋 Quick test: Run testSuccessModal() to test success modal');
+// console.log('✓ Modal test functions available:');
+// console.log('  - testErrorModal(): Test error modal display');
+// console.log('  - testSuccessModal(): Test success modal display');
+// console.log('  - testPreviewModal(): Test preview modal initialization');
+// console.log('  - testTabSwitching(): Test tab switching functionality in success modal');
+// console.log('');
+// console.log('🔧 Quick test: Run testTabSwitching() to verify tab functionality');
+// console.log('📋 Quick test: Run testSuccessModal() to test success modal');
 
-// Simple quick test function that can be called immediately
-window.quickTabTest = function() {
-  console.log('🚀 Running quick tab test...');
-  testSuccessModal();
-  setTimeout(() => {
-    console.log('Testing tab clicks...');
-    const jsonBtn = document.querySelector('.tab-nav button[data-tab="json-tab"]');
-    const tableBtn = document.querySelector('.tab-nav button[data-tab="table-tab"]');
+// // Simple quick test function that can be called immediately
+// window.quickTabTest = function() {
+//   console.log('🚀 Running quick tab test...');
+//   testSuccessModal();
+//   setTimeout(() => {
+//     console.log('Testing tab clicks...');
+//     const jsonBtn = document.querySelector('.tab-nav button[data-tab="json-tab"]');
+//     const tableBtn = document.querySelector('.tab-nav button[data-tab="table-tab"]');
     
-    if (jsonBtn && tableBtn) {
-      console.log('Clicking JSON tab...');
-      jsonBtn.click();
-      setTimeout(() => {
-        console.log('Clicking Table tab...');
-        tableBtn.click();
-        console.log('✅ Quick test completed - check if tabs switched!');
-      }, 1000);
-    }
-  }, 1000);
-};
+//     if (jsonBtn && tableBtn) {
+//       console.log('Clicking JSON tab...');
+//       jsonBtn.click();
+//       setTimeout(() => {
+//         console.log('Clicking Table tab...');
+//         tableBtn.click();
+//         console.log('✅ Quick test completed - check if tabs switched!');
+//       }, 1000);
+//     }
+//   }, 1000);
+// };
 
-// Test function for tab switching
-window.testTabSwitching = function() {
-  console.log('=== Testing tab switching functionality ===');
+// // Test function for tab switching
+// window.testTabSwitching = function() {
+//   console.log('=== Testing tab switching functionality ===');
   
-  // First open the success modal with test data
-  const testResponse = {
-    fbrInvoiceNumber: "TAB-TEST-12345",
-    invoiceNumber: "SI-TAB-TEST-001", 
-    dated: new Date().toISOString(),
-    status: "submitted",
-    validationResponse: {
-      invoiceStatuses: [
-        {
-          itemSNo: "1",
-          statusCode: "200",
-          invoiceNo: "SI-TAB-TEST-001",
-          status: "Success",
-          errorCode: "",
-          error: ""
-        }
-      ]
-    }
-  };
+//   // First open the success modal with test data
+//   const testResponse = {
+//     fbrInvoiceNumber: "TAB-TEST-12345",
+//     invoiceNumber: "SI-TAB-TEST-001", 
+//     dated: new Date().toISOString(),
+//     status: "submitted",
+//     validationResponse: {
+//       invoiceStatuses: [
+//         {
+//           itemSNo: "1",
+//           statusCode: "200",
+//           invoiceNo: "SI-TAB-TEST-001",
+//           status: "Success",
+//           errorCode: "",
+//           error: ""
+//         }
+//       ]
+//     }
+//   };
   
-  console.log('Opening success modal with test data...');
-  displaySuccessModal(testResponse);
+//   console.log('Opening success modal with test data...');
+//   displaySuccessModal(testResponse);
   
-  // Test tab switching after a short delay
-  setTimeout(() => {
-    console.log('=== Starting tab button tests ===');
+//   // Test tab switching after a short delay
+//   setTimeout(() => {
+//     console.log('=== Starting tab button tests ===');
     
-    // Test clicking JSON tab
-    const jsonTabBtn = document.querySelector('.tab-nav button[data-tab="json-tab"]');
-    const tableTabBtn = document.querySelector('.tab-nav button[data-tab="table-tab"]');
-    const jsonTabContent = document.getElementById('json-tab');
-    const tableTabContent = document.getElementById('table-tab');
+//     // Test clicking JSON tab
+//     const jsonTabBtn = document.querySelector('.tab-nav button[data-tab="json-tab"]');
+//     const tableTabBtn = document.querySelector('.tab-nav button[data-tab="table-tab"]');
+//     const jsonTabContent = document.getElementById('json-tab');
+//     const tableTabContent = document.getElementById('table-tab');
     
-    console.log('Elements found:', {
-      jsonTabBtn: !!jsonTabBtn,
-      tableTabBtn: !!tableTabBtn,
-      jsonTabContent: !!jsonTabContent,
-      tableTabContent: !!tableTabContent
-    });
+//     console.log('Elements found:', {
+//       jsonTabBtn: !!jsonTabBtn,
+//       tableTabBtn: !!tableTabBtn,
+//       jsonTabContent: !!jsonTabContent,
+//       tableTabContent: !!tableTabContent
+//     });
     
-    if (jsonTabBtn && tableTabBtn && jsonTabContent && tableTabContent) {
-      console.log('\n=== Testing JSON Tab Click ===');
-      jsonTabBtn.click();
+//     if (jsonTabBtn && tableTabBtn && jsonTabContent && tableTabContent) {
+//       console.log('\n=== Testing JSON Tab Click ===');
+//       jsonTabBtn.click();
       
-      setTimeout(() => {
-        const jsonActive = jsonTabBtn.classList.contains('tab-active');
-        const jsonVisible = jsonTabContent.classList.contains('active');
-        const tableInactive = !tableTabBtn.classList.contains('tab-active');
-        const tableHidden = !tableTabContent.classList.contains('active');
+//       setTimeout(() => {
+//         const jsonActive = jsonTabBtn.classList.contains('tab-active');
+//         const jsonVisible = jsonTabContent.classList.contains('active');
+//         const tableInactive = !tableTabBtn.classList.contains('tab-active');
+//         const tableHidden = !tableTabContent.classList.contains('active');
         
-        console.log('JSON tab results:', {
-          buttonActive: jsonActive,
-          contentVisible: jsonVisible,
-          jsonDisplay: getComputedStyle(jsonTabContent).display,
-          tableDisplay: getComputedStyle(tableTabContent).display
-        });
+//         console.log('JSON tab results:', {
+//           buttonActive: jsonActive,
+//           contentVisible: jsonVisible,
+//           jsonDisplay: getComputedStyle(jsonTabContent).display,
+//           tableDisplay: getComputedStyle(tableTabContent).display
+//         });
         
-        console.log('\n=== Testing Table Tab Click ===');
-        tableTabBtn.click();
+//         console.log('\n=== Testing Table Tab Click ===');
+//         tableTabBtn.click();
         
-        setTimeout(() => {
-          const tableActive = tableTabBtn.classList.contains('tab-active');
-          const tableVisible = tableTabContent.classList.contains('active');
-          const jsonInactive = !jsonTabBtn.classList.contains('tab-active');
-          const jsonHidden = !jsonTabContent.classList.contains('active');
+//         setTimeout(() => {
+//           const tableActive = tableTabBtn.classList.contains('tab-active');
+//           const tableVisible = tableTabContent.classList.contains('active');
+//           const jsonInactive = !jsonTabBtn.classList.contains('tab-active');
+//           const jsonHidden = !jsonTabContent.classList.contains('active');
           
-          console.log('Table tab results:', {
-            buttonActive: tableActive,
-            contentVisible: tableVisible,
-            tableDisplay: getComputedStyle(tableTabContent).display,
-            jsonDisplay: getComputedStyle(jsonTabContent).display
-          });
+//           console.log('Table tab results:', {
+//             buttonActive: tableActive,
+//             contentVisible: tableVisible,
+//             tableDisplay: getComputedStyle(tableTabContent).display,
+//             jsonDisplay: getComputedStyle(jsonTabContent).display
+//           });
           
-          const allTestsPassed = jsonActive && jsonVisible && tableInactive && tableHidden && 
-                                 tableActive && tableVisible && jsonInactive && jsonHidden;
+//           const allTestsPassed = jsonActive && jsonVisible && tableInactive && tableHidden && 
+//                                  tableActive && tableVisible && jsonInactive && jsonHidden;
           
-          if (allTestsPassed) {
-            console.log('\n✅ ALL TAB SWITCHING TESTS PASSED!');
-            showToast('success', 'Tab Test Complete', 'All tab switching functionality working correctly!');
-          } else {
-            console.log('\n❌ Some tab switching tests failed. Check logs above.');
-            showToast('error', 'Tab Test Failed', 'Some tab functionality issues detected. Check console.');
-          }
-        }, 200);
-      }, 200);
-    } else {
-      console.error('❌ Required tab elements not found!');
-      showToast('error', 'Tab Test Failed', 'Required elements not found');
-    }
-  }, 1000);
-};
+//           if (allTestsPassed) {
+//             console.log('\n✅ ALL TAB SWITCHING TESTS PASSED!');
+//             showToast('success', 'Tab Test Complete', 'All tab switching functionality working correctly!');
+//           } else {
+//             console.log('\n❌ Some tab switching tests failed. Check logs above.');
+//             showToast('error', 'Tab Test Failed', 'Some tab functionality issues detected. Check console.');
+//           }
+//         }, 200);
+//       }, 200);
+//     } else {
+//       console.error('❌ Required tab elements not found!');
+//       showToast('error', 'Tab Test Failed', 'Required elements not found');
+//     }
+//   }, 1000);
+// };
 
-// Test function for preview modal initialization
-window.testPreviewModal = function() {
-  try {
-    initPreviewModal();
-    console.log('Preview modal initialization test passed');
-    showToast('success', 'Test Passed', 'Preview modal initialized successfully');
-  } catch (error) {
-    console.error('Preview modal initialization test failed:', error);
-    showToast('error', 'Test Failed', 'Preview modal initialization failed: ' + error.message);
-  }
-};
+// // Test function for preview modal initialization
+// window.testPreviewModal = function() {
+//   try {
+//     initPreviewModal();
+//     console.log('Preview modal initialization test passed');
+//     showToast('success', 'Test Passed', 'Preview modal initialized successfully');
+//   } catch (error) {
+//     console.error('Preview modal initialization test failed:', error);
+//     showToast('error', 'Test Failed', 'Preview modal initialization failed: ' + error.message);
+//   }
+// };

@@ -12,16 +12,6 @@
 
   
   <link rel="stylesheet" href="index.css">
-  <link rel="stylesheet" href="components/components.css">
-
-  <!-- Component Scripts - DISABLED to restore original functionality -->
-  <!-- 
-  <script src="components/ExportComponent.js"></script>
-  <script src="components/FilterComponent.js"></script>
-  <script src="components/TableComponent.js"></script>
-  <script src="components/tableConfigs.js"></script>
-  <script src="components/componentInit.js"></script>
-  -->
 
   <script>
     window.jsPDF = window.jspdf.jsPDF;
@@ -31,6 +21,22 @@
 
 </head>
 <body class="light-theme">
+  <!-- App Loader -->
+  <div id="appLoader" class="app-loader">
+    <div class="loader-content">
+      <div class="loader-logo">
+        <i class="fas fa-file-invoice"></i>
+      </div>
+      <h2 class="loader-title">FBR Digital Invoicing</h2>
+      <p class="loader-subtitle">Initializing your invoice management system</p>
+      <div class="loader-spinner"></div>
+      <div class="loader-status" id="loaderStatus">Initializing application...</div>
+      <div class="loader-progress">
+        <div class="loader-progress-bar"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Container -->
   <div class="toast-container" id="toastContainer"></div>
 
@@ -70,8 +76,10 @@
     </div>
   </header> 
   
-  <!-- Navigation Tabs -->
-  <nav class="navigation" style="gap: 10px;">
+
+  <div class="container">
+    <!-- Navigation Tabs -->
+  <nav class="navigation" style="gap: 10px; z-index: 1100;">
     <button class="nav-btn active" data-tab="dashboard-tab">
       <i class="fas fa-chart-line"></i> Dashboard
     </button>
@@ -97,8 +105,6 @@
       <i class="fas fa-cog"></i> Settings
     </button>
   </nav>
-
-  <div class="container">
     <!-- Dashboard Tab -->
     <div id="dashboard-tab" class="tab-content active">
       <div id="dashboard-content" class="dashboard-container">
@@ -677,8 +683,8 @@
       
       <!-- Result Container -->
       <div class="result-container" style="height: calc(100vh - 200px); display: flex; flex-direction: column; border: 1px solid #dee2e6; border-radius: 4px; overflow: hidden; margin-top: 10px;">
-        <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8f9fa; border-bottom: 1px solid #dee2e6; flex-shrink: 0;">
-          <h3 style="margin: 0; font-size: 0.9rem; color: #495057;"><i class="fas fa-file-code"></i> API Response</h3>
+        <div class="result-header" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid #dee2e6; flex-shrink: 0;">
+          <h3 style="margin: 0; font-size: 0.9rem"><i class="fas fa-file-code"></i> API Response</h3>
           <div style="display: flex; align-items: center; gap: 8px;">
             <button id="copyApiResponseBtn" class="btn btn-sm btn-warning" style="padding: 4px 8px; font-size: 0.75rem;">
               <i class="fas fa-copy"></i> Copy
@@ -686,7 +692,7 @@
             <div class="result-status status-ready" id="apiResultStatus" style="padding: 3px 6px; border-radius: 3px; font-size: 0.75rem; background: #e9ecef; color: #495057;">Ready</div>
           </div>
         </div>
-        <div class="result-content" id="apiResult" style="flex: 1; padding: 12px; background: #ffffff; font-family: 'Courier New', monospace; font-size: 0.8rem; overflow-y: auto; white-space: pre-wrap; line-height: 1.4;">
+        <div class="result-content" id="apiResult" style="flex: 1; padding: 12px; font-family: 'Courier New', monospace; font-size: 0.8rem; overflow-y: auto; white-space: pre-wrap; line-height: 1.4;">
 {
   "message": "Select an endpoint and click 'Test Endpoint' to see results"
 }
@@ -925,10 +931,32 @@
     <div id="settings-tab" class="tab-content">
       <div class="card">
         <div class="card-header">
-          <h2><i class="fas fa-cog"></i> Database Settings</h2>
+          <h2><i class="fas fa-cog"></i> Application Settings</h2>
         </div>
         
         <div style="padding: 20px;">
+          <!-- Console Logging Settings -->
+          <div class="form-section" style="margin-bottom: 30px;">
+            <h4 style="margin: 0 0 15px 0; color: #6c757d; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">
+              <i class="fas fa-terminal"></i> Console Logging
+            </h4>
+            <p style="color: #666; margin-bottom: 15px;">Control whether the application logs debug information to the browser console. Useful for troubleshooting issues.</p>
+            <div style="display: flex; align-items: center; gap: 15px;">
+              <label class="switch" style="margin: 0;">
+                <input type="checkbox" id="consoleLoggingToggle">
+                <span class="slider round"></span>
+              </label>
+              <span id="consoleLoggingStatus" style="font-weight: 500; color: #495057;">Console Logging: Disabled</span>
+            </div>
+          </div>
+
+          <!-- Database Settings Section -->
+          <div class="form-section" style="margin-bottom: 30px; padding-top: 20px; border-top: 1px solid #dee2e6;">
+            <h4 style="margin: 0 0 15px 0; color: #6c757d; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">
+              <i class="fas fa-database"></i> Database Management
+            </h4>
+          </div>
+
           <div class="form-section" style="margin-bottom: 30px;">
             <h4 style="margin: 0 0 15px 0; color: #6c757d; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">
               <i class="fas fa-download"></i> Export Database
@@ -1029,7 +1057,7 @@
   <div class="modal" id="sellerModal">
     <div class="modal-content" style="max-width: 950px; margin: 2vh auto;">
       <div class="modal-header" style="padding: 15px 20px; border-bottom: 1px solid #dee2e6;">
-        <h3 style="margin: 0; color: #495057;"><i class="fas fa-user-tie"></i> <span id="sellerModalTitle">Add New Seller</span></h3>
+        <h3 style="margin: 0;"><i class="fas fa-user-tie"></i> <span id="sellerModalTitle">Add New Seller</span></h3>
         <button class="modal-close" id="closeSellerModal" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
       </div>
       <div class="modal-body" style="padding: 20px; max-height: 70vh; overflow-y: auto;">
@@ -1106,7 +1134,7 @@
               <select id="sellerScenarioSelect" style="margin-bottom: 10px; height: 42px; padding: 8px 12px;">
                 <option value="">Select Scenario to Add</option>
               </select>
-              <div class="scenario-chips" id="scenarioChips" style="min-height: 40px; padding: 8px; border: 1px solid #dee2e6; border-radius: 4px; background: #f8f9fa;"></div>
+              <div class="scenario-chips" id="scenarioChips" style="min-height: 40px; padding: 8px; border: 1px solid #dee2e6; border-radius: 4px;"></div>
               <input type="hidden" id="sellerScenarioIds">
             </div>
           </div>
@@ -1158,7 +1186,7 @@
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <pre id="jsonPayload" style="background: #f8f9fa; padding: 15px; border-radius: 6px; font-size: 0.85rem; max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6;"></pre>
+          <pre id="jsonPayload" style="padding: 15px; border-radius: 6px; font-size: 0.85rem; max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6;"></pre>
         </div>
       </div>
       <div class="modal-footer">
@@ -1187,9 +1215,8 @@
         
         <div class="tab-container">
           <div class="tab-nav">
-            <button id="toggleViewBtn" class="btn btn-primary toggle-view-btn" data-current="table">
-              <i class="fas fa-code"></i> View as JSON
-            </button>
+            <button class="tab-btn tab-active" data-tab="table-tab" onclick="switchSuccessTab('table-tab')">View as Table</button>
+            <button class="tab-btn" data-tab="json-tab" onclick="switchSuccessTab('json-tab')">View as JSON</button>
           </div>
           
           <div class="tab-content active" id="table-tab">
@@ -1306,7 +1333,7 @@
               <div class="form-group" style="flex: 1; position: relative;">
                 <label for="productHsCode">HS Code</label>
                 <input type="text" id="productHsCode" required placeholder="Search HS Code..." autocomplete="off">
-                <div id="productHsCodeSuggestions" class="hs-suggestions" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; background: white; border: 1px solid #ddd; max-height: 200px; overflow-y: auto;"></div>
+                <div id="productHsCodeSuggestions" class="hs-suggestions" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; border: 1px solid #ddd; max-height: 200px; overflow-y: auto;"></div>
               </div>
               <div class="form-group" style="flex: 2;">
                 <label for="productName">Product Name</label>
